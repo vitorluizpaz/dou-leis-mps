@@ -1,0 +1,22 @@
+name: Scrape DOU hourly
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger scraper
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          SCRAPE_API_KEY: ${{ secrets.SCRAPE_API_KEY }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            --retry 3 --retry-all-errors \
+            -X POST "$API_URL/api/scrape" \
+            -H "X-API-Key: $SCRAPE_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}'
