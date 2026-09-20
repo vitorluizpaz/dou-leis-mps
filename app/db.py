@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, create_engine, desc, insert, select
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, create_engine, desc, insert, select, text
 from sqlalchemy.exc import IntegrityError
 
 from .config import get_settings
@@ -27,12 +27,12 @@ publications = Table(
     Column("kind", String(40), nullable=False), Column("number", String(80)),
     Column("summary", Text), Column("published_date", String(10), nullable=False),
     Column("source_url", Text, nullable=False), Column("fingerprint", String(64), nullable=False, unique=True),
-    Column("created_at", DateTime, server_default="CURRENT_TIMESTAMP", nullable=False),
+    Column("created_at", DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False),
 )
 scrape_runs = Table(
     "scrape_runs", metadata,
     Column("id", Integer, primary_key=True), Column("requested_date", String(10), nullable=False),
-    Column("started_at", DateTime, server_default="CURRENT_TIMESTAMP", nullable=False),
+    Column("started_at", DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False),
     Column("status", String(20), nullable=False), Column("found", Integer, nullable=False, default=0), Column("error", Text),
 )
 
@@ -79,4 +79,3 @@ def list_runs(limit: int = 20) -> list[dict]:
     query = select(scrape_runs).order_by(desc(scrape_runs.c.id)).limit(limit)
     with engine.connect() as connection:
         return [dict(row._mapping) for row in connection.execute(query).fetchall()]
-
