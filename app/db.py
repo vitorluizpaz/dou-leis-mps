@@ -35,6 +35,12 @@ scrape_runs = Table(
     Column("started_at", DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False),
     Column("status", String(20), nullable=False), Column("found", Integer, nullable=False, default=0), Column("error", Text),
 )
+telegram_deliveries = Table(
+    "telegram_deliveries", metadata,
+    Column("id", Integer, primary_key=True), Column("fingerprint", String(64), nullable=False, unique=True),
+    Column("message_id", String(80), nullable=False),
+    Column("sent_at", DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False),
+)
 
 
 def init_db() -> None:
@@ -47,8 +53,8 @@ def connect():
         yield connection
 
 
-def save_publications(items: list[Publication]) -> int:
-    inserted = 0
+def save_publications(items: list[Publication]) -> list[Publication]:
+    inserted: list[Publication] = []
     for item in items:
         try:
             with connect() as connection:
@@ -56,10 +62,29 @@ def save_publications(items: list[Publication]) -> int:
                     title=item.title, kind=item.kind, number=item.number, summary=item.summary,
                     published_date=item.published_date.isoformat(), source_url=item.source_url,
                     fingerprint=item.fingerprint))
-            inserted += 1
+            inserted.append(item)
         except IntegrityError:
             pass
     return inserted
+
+
+def list_pending_telegram(limit: int = 100) -> list[dict]:
+    query = (select(publications)
+        .outerjoin(telegram_deliveries, publications.c.fingerprint == telegram_deliveries.c.fingerprint)
+        .where(telegram_deliveries.c.id.is_(None))
+        .order_by(publications.c.published_date, publications.c.id)
+        .limit(limit))
+    with engine.connect() as connection:
+        return [dict(row._mapping) for row in connection.execute(query).fetchall()]
+
+
+def mark_telegram_sent(fingerprint: str, message_id: str) -> None:
+    try:
+        with connect() as connection:
+            connection.execute(insert(telegram_deliveries).values(
+                fingerprint=fingerprint, message_id=message_id))
+    except IntegrityError:
+        pass
 
 
 def list_publications(published_date: str | None = None, limit: int = 100) -> list[dict]:

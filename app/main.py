@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from .config import get_settings
 from .db import init_db, list_publications, list_runs
 from .scraper import DouScraper
+from .telegram import publish_pending_telegram
 
 settings = get_settings()
 scheduler = BackgroundScheduler(timezone=ZoneInfo(settings.timezone))
@@ -25,6 +26,7 @@ class ScrapeRequest(BaseModel):
 def run_scheduled_scrape() -> None:
     now = datetime.now(ZoneInfo(settings.timezone))
     DouScraper().scrape(now.date())
+    publish_pending_telegram()
 
 
 @asynccontextmanager
@@ -47,7 +49,8 @@ app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 def health() -> dict:
     return {"status": "ok", "scrape_interval_minutes": settings.scrape_interval_minutes,
             "timezone": settings.timezone,
-            "auth_configured": bool(settings.read_api_key and settings.scrape_api_key)}
+            "auth_configured": bool(settings.read_api_key and settings.scrape_api_key),
+            "telegram_configured": bool(settings.telegram_bot_token and settings.telegram_chat_id)}
 
 
 def require_api_key(kind: str):
@@ -69,8 +72,11 @@ def laws(date: str | None = Query(default=None), limit: int = Query(default=100,
 @app.post("/api/scrape")
 def scrape(body: ScrapeRequest | None = None, _auth: None = Depends(require_api_key("scrape"))) -> dict:
     target = body.date if body and body.date else datetime.now(ZoneInfo(settings.timezone)).date()
-    items = DouScraper().scrape(target)
-    return {"date": target, "found": len(items), "items": items}
+    scraper = DouScraper()
+    items = scraper.scrape(target)
+    sent = publish_pending_telegram()
+    return {"date": target, "found": len(items), "new": len(scraper.new_items),
+            "telegram_sent": sent, "items": items}
 
 
 @app.get("/api/runs")

@@ -1,6 +1,6 @@
 # DOU Leis e MPs
 
-MVP em Python que consulta a seção 1 do Diário Oficial da União, identifica publicações de **Leis** e **Medidas Provisórias**, salva os resultados em SQLite e oferece uma API e uma interface web de teste.
+Aplicação em Python que consulta a seção 1 do Diário Oficial da União, identifica publicações de **Leis** e **Medidas Provisórias**, salva os resultados em PostgreSQL/SQLite, oferece uma API e publica novas ocorrências em um canal do Telegram.
 
 ## Rodar localmente
 
@@ -35,6 +35,8 @@ O processo da API sobe um job interno que consulta o DOU a cada `SCRAPE_INTERVAL
 
 Configure `READ_API_KEY` e `SCRAPE_API_KEY` no `.env`. Use chaves diferentes; em produção, não publique nenhuma delas nem as coloque no código-fonte. `DATABASE_URL` deve apontar para PostgreSQL; SQLite fica apenas para desenvolvimento local.
 
+Para ativar o Telegram, crie um bot pelo BotFather, adicione-o como administrador do canal e configure `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID`. O sistema publica somente itens ainda não enviados e registra cada envio no banco para evitar duplicatas.
+
 Em produção, recomenda-se manter um único processo da API. Se preferir cron do sistema, use:
 
 ```cron
@@ -43,8 +45,8 @@ Em produção, recomenda-se manter um único processo da API. Se preferir cron d
 
 ## Limitações conhecidas
 
-O portal oficial pode alterar o HTML. O parser procura os blocos JSON publicados pela própria página e tem fallback para links de matérias. A cobertura deve ser validada em execução contra uma edição real antes de ativar o Telegram.
+O portal oficial pode alterar o HTML. O parser procura os blocos JSON publicados pela própria página e tem fallback para links de matérias. Se o Telegram não estiver configurado, a coleta continua funcionando e os itens ficam disponíveis na API.
 
 ## Deploy gratuito sugerido
 
-O arquivo `render.yaml` prepara a API para o Render. Configure `DATABASE_URL` usando um PostgreSQL externo e as duas chaves como secrets. O workflow `.github/workflows/hourly-scrape.yml` chama a API uma vez por hora; isso é necessário porque o serviço gratuito do Render pode dormir.
+O arquivo `render.yaml` prepara a API para o Render. Configure `DATABASE_URL`, as duas chaves de API e as variáveis do Telegram como secrets. O workflow `.github/workflows/hourly-scrape.yml` chama a API uma vez por hora; isso é necessário porque o serviço gratuito do Render pode dormir.

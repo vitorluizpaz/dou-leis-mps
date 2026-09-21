@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     scrape_interval_minutes: int = 60
     read_api_key: str = ""
     scrape_api_key: str = ""
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
     request_timeout: int = 30
     user_agent: str = "DOU-LeisMPs/0.1"
 

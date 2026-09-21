@@ -12,6 +12,10 @@ services:
         sync: false
       - key: SCRAPE_API_KEY
         sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
       - key: SCRAPE_INTERVAL_MINUTES
         value: "60"
       - key: TIMEZONE

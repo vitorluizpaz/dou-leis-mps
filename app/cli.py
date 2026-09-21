@@ -3,6 +3,7 @@ from datetime import date
 
 from .db import init_db
 from .scraper import DouScraper
+from .telegram import publish_pending_telegram
 
 
 def main() -> None:
@@ -14,9 +15,9 @@ def main() -> None:
     init_db()
     if args.command == "scrape":
         items = DouScraper().scrape(date.fromisoformat(args.date))
-        print(f"Encontradas {len(items)} publicações em {args.date}")
+        sent = publish_pending_telegram()
+        print(f"Encontradas {len(items)} publicações em {args.date}; enviadas ao Telegram: {sent}")
 
 
 if __name__ == "__main__":
     main()
-

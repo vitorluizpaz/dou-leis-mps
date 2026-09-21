@@ -19,6 +19,7 @@ class DouScraper:
         self.settings = get_settings()
         self.session = session or requests.Session()
         self.session.headers.update({"User-Agent": self.settings.user_agent})
+        self.new_items: list[Publication] = []
 
     def fetch_html(self, target_date: date) -> str:
         params = {"data": target_date.strftime("%d-%m-%Y"), "secao": "dou1"}
@@ -77,10 +78,9 @@ class DouScraper:
     def scrape(self, target_date: date) -> list[Publication]:
         try:
             items = self.parse(self.fetch_html(target_date), target_date)
-            save_publications(items)
-            save_run(target_date.isoformat(), "success", len(items))
+            self.new_items = save_publications(items)
+            save_run(target_date.isoformat(), "success", len(self.new_items))
             return items
         except Exception as exc:
             save_run(target_date.isoformat(), "error", 0, str(exc))
             raise
-
