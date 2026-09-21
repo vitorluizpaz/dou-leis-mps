@@ -22,3 +22,7 @@ def test_parse_deduplicates_items():
     html = FIXTURE.replace('</script>', '</script><script type="application/json">' + FIXTURE.split('<script type="application/json">',1)[1].split('</script>',1)[0] + '</script>')
     assert len(scraper.parse(html, date(2026, 9, 20))) == 2
 
+
+def test_parse_discards_non_official_links():
+    html = '''<html><a href="https://evil.example/lei">LEI Nº 15.001, DE 20 DE SETEMBRO DE 2026</a></html>'''
+    assert DouScraper().parse(html, date(2026, 9, 20)) == []

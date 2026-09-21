@@ -7,10 +7,12 @@ class Settings(BaseSettings):
     app_name: str = "DOU Leis e MPs"
     database_url: str = "sqlite:///data/dou.sqlite3"
     dou_base_url: str = "https://www.in.gov.br/leiturajornal"
+    allowed_hosts: str = "dou-leis-mps.onrender.com,localhost,127.0.0.1"
     timezone: str = "America/Sao_Paulo"
     scrape_interval_minutes: int = 1440
     scrape_hour: int = 8
     scrape_minute: int = 0
+    enable_docs: bool = False
     read_api_key: str = ""
     scrape_api_key: str = ""
     telegram_bot_token: str = ""

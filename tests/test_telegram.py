@@ -28,11 +28,30 @@ def test_telegram_publisher_sends_title_and_link():
     try:
         message_id = TelegramPublisher(session).send({
             "title": "LEI <teste>",
-            "source_url": "https://example.com/lei?a=1&b=2",
+            "source_url": "https://www.in.gov.br/en/web/dou/-/lei?a=1&b=2",
         })
         assert message_id == "42"
         assert session.calls[0][1]["chat_id"] == "@channel"
         assert "LEI &lt;teste&gt;" in session.calls[0][1]["text"]
         assert "Clique para ler" in session.calls[0][1]["text"]
+    finally:
+        settings.telegram_bot_token, settings.telegram_chat_id = old_token, old_chat
+
+
+def test_telegram_publisher_rejects_non_official_link():
+    settings = get_settings()
+    old_token, old_chat = settings.telegram_bot_token, settings.telegram_chat_id
+    settings.telegram_bot_token = "bot-token"
+    settings.telegram_chat_id = "@channel"
+    try:
+        try:
+            TelegramPublisher(FakeSession()).send({
+                "title": "LEI de teste",
+                "source_url": "https://evil.example/lei",
+            })
+        except RuntimeError as error:
+            assert "domínio oficial" in str(error)
+        else:
+            raise AssertionError("Link externo deveria ser rejeitado")
     finally:
         settings.telegram_bot_token, settings.telegram_chat_id = old_token, old_chat

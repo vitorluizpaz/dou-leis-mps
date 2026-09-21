@@ -1,9 +1,18 @@
 from html import escape
+from urllib.parse import urlparse
 
 import requests
 
 from .config import get_settings
 from .db import list_pending_telegram, mark_telegram_sent
+
+OFFICIAL_HOSTS = {"in.gov.br", "www.in.gov.br"}
+
+
+def is_safe_source_url(value: str) -> bool:
+    parsed = urlparse(value)
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    return parsed.scheme == "https" and hostname in OFFICIAL_HOSTS
 
 
 class TelegramPublisher:
@@ -18,6 +27,8 @@ class TelegramPublisher:
     def send(self, item: dict) -> str:
         if not self.configured:
             raise RuntimeError("Telegram não configurado")
+        if not is_safe_source_url(item["source_url"]):
+            raise RuntimeError("Link da publicação não pertence ao domínio oficial do DOU")
         text = (
             f"<b>{escape(item['title'])}</b>\n\n"
             f"<a href=\"{escape(item['source_url'], quote=True)}\">Clique para ler</a>"

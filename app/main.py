@@ -8,6 +8,7 @@ from apscheduler.triggers.cron import CronTrigger
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from zoneinfo import ZoneInfo
 
 from .config import get_settings
@@ -49,7 +50,39 @@ async def lifespan(_app: FastAPI):
             scheduler.shutdown(wait=False)
 
 
-app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
+allowed_hosts = [host.strip() for host in settings.allowed_hosts.split(",") if host.strip()]
+app = FastAPI(
+    title=settings.app_name,
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.enable_docs else None,
+    redoc_url="/redoc" if settings.enable_docs else None,
+    openapi_url="/openapi.json" if settings.enable_docs else None,
+)
+if "*" not in allowed_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+
+
+@app.middleware("http")
+async def add_security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; "
+        "form-action 'self'; img-src 'self' data:; connect-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+    )
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers.setdefault(
+            "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+        )
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-store")
+    return response
 
 
 @app.get("/api/health")
@@ -73,9 +106,9 @@ def require_api_key(kind: str):
 
 
 @app.get("/api/laws")
-def laws(date: str | None = Query(default=None), limit: int = Query(default=100, le=500),
+def laws(date: Date | None = Query(default=None), limit: int = Query(default=100, ge=1, le=500),
          _auth: None = Depends(require_api_key("read"))) -> list[dict]:
-    return list_publications(date, limit)
+    return list_publications(date.isoformat() if date else None, limit)
 
 
 @app.post("/api/scrape")
@@ -89,7 +122,7 @@ def scrape(body: ScrapeRequest | None = None, _auth: None = Depends(require_api_
 
 
 @app.get("/api/runs")
-def runs(limit: int = Query(default=20, le=100), _auth: None = Depends(require_api_key("read"))) -> list[dict]:
+def runs(limit: int = Query(default=20, ge=1, le=100), _auth: None = Depends(require_api_key("read"))) -> list[dict]:
     return list_runs(limit)
 
 

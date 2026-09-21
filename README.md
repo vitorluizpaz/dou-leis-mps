@@ -60,11 +60,14 @@ Requisitos: Python 3.11+ e, opcionalmente, PostgreSQL. Para desenvolvimento, SQL
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
 Abra `http://127.0.0.1:8000/`. A documentação interativa da API fica em `http://127.0.0.1:8000/docs`.
+
+A documentação interativa fica desativada por padrão. Para habilitá-la localmente, defina `ENABLE_DOCS=true` no `.env` e reinicie o servidor. Não habilite essa opção em produção sem necessidade.
 
 Para executar uma coleta local:
 
@@ -85,6 +88,7 @@ Copie `.env.example` e preencha os valores no ambiente local ou no Render. Nunca
 | Variável | Obrigatória | Função |
 | --- | --- | --- |
 | `DATABASE_URL` | Produção | URL do PostgreSQL. SQLite serve para desenvolvimento. |
+| `ALLOWED_HOSTS` | Não | Hosts aceitos pelo servidor. Inclua o domínio público e hosts locais separados por vírgula. |
 | `READ_API_KEY` | Sim | Autoriza consultas em `/api/laws` e `/api/runs`. |
 | `SCRAPE_API_KEY` | Sim | Autoriza execuções em `/api/scrape`. Deve ser diferente da READ key. |
 | `TELEGRAM_BOT_TOKEN` | Para publicar | Token criado pelo @BotFather. |
@@ -92,6 +96,7 @@ Copie `.env.example` e preencha os valores no ambiente local ou no Render. Nunca
 | `SCRAPE_INTERVAL_MINUTES` | Compatibilidade | Mantida como `1440` para indicar um ciclo diário. O horário fixo é definido pelas duas variáveis abaixo. |
 | `SCRAPE_HOUR` | Não | Hora da coleta no fuso configurado. Padrão: `8`. |
 | `SCRAPE_MINUTE` | Não | Minuto da coleta. Padrão: `0`. |
+| `ENABLE_DOCS` | Não | Habilita `/docs`, `/redoc` e `/openapi.json`. Padrão: `false`. |
 | `TIMEZONE` | Não | Fuso horário. Padrão: `America/Sao_Paulo`. |
 | `DOU_BASE_URL` | Não | Endpoint da leitura do DOU. |
 | `REQUEST_TIMEOUT` | Não | Timeout das requisições externas. |
@@ -124,6 +129,8 @@ Para um grupo privado, o ID normalmente começa com `-100`. Para obter o ID, env
 
 ## API
 
+As rotas protegidas recebem a chave no cabeçalho `X-API-Key`. A chave nunca deve ser enviada na URL, pois URLs podem aparecer em históricos, logs e ferramentas de monitoramento.
+
 ### `GET /api/health`
 
 Endpoint público de saúde e configuração não sensível:
@@ -148,7 +155,7 @@ Lista publicações salvas. Exige `X-API-Key: READ_API_KEY`.
 Parâmetros:
 
 - `date=YYYY-MM-DD` filtra por data;
-- `limit=100` limita o resultado, até 500.
+- `limit=100` limita o resultado, entre 1 e 500.
 
 ### `POST /api/scrape`
 
@@ -168,11 +175,13 @@ A resposta informa quantidade encontrada, quantidade nova e quantidade enviada a
 
 ### `GET /api/runs`
 
-Lista as últimas execuções do scraper. Exige `X-API-Key: READ_API_KEY`.
+Lista as últimas execuções do scraper. Exige `X-API-Key: READ_API_KEY`. O parâmetro `limit` aceita valores entre 1 e 100.
+
+As respostas da API usam `Cache-Control: no-store` para evitar que dados protegidos sejam armazenados por caches intermediários.
 
 ## Agendamento em produção
 
-O workflow `.github/workflows/hourly-scrape.yml` é executado uma vez por dia às 08:00 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `0 11 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
+O workflow `.github/workflows/daily-scrape.yml` é executado uma vez por dia às 08:00 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `0 11 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
 
 O serviço também agenda uma execução diária às 08:00 usando `CronTrigger` no fuso `America/Sao_Paulo`. Os dois mecanismos possuem a mesma finalidade; o workflow do GitHub funciona como despertador confiável para o plano gratuito do Render.
 
@@ -195,7 +204,7 @@ O arquivo `render.yaml` descreve o serviço web e o banco PostgreSQL. O fluxo us
 4. `DATABASE_URL`, chaves da API e variáveis do Telegram cadastradas em **Environment**.
 5. Deploy automático após cada push na branch `main`.
 
-O plano gratuito pode colocar o web service em espera após inatividade. Por isso o workflow horário do GitHub Actions deve permanecer ativo. O banco PostgreSQL gratuito também pode ter prazo ou limites definidos pelo provedor; monitore o painel do Render.
+O plano gratuito pode colocar o web service em espera após inatividade. Por isso o workflow diário do GitHub Actions deve permanecer ativo. O banco PostgreSQL gratuito também pode ter prazo ou limites definidos pelo provedor; monitore o painel do Render.
 
 ## Histórico de teste
 
@@ -218,12 +227,37 @@ Em 20/09/2026, a janela de 07/09/2026 a 20/09/2026 foi executada em produção: 
 
 ## Segurança
 
+Medidas implementadas:
+
+- `READ_API_KEY` e `SCRAPE_API_KEY` são distintas e comparadas com `secrets.compare_digest`.
+- A coleta manual (`POST /api/scrape`) e as consultas (`/api/laws` e `/api/runs`) exigem `X-API-Key`.
+- A documentação automática da FastAPI fica desativada por padrão em produção.
+- O servidor valida o cabeçalho `Host` com `ALLOWED_HOSTS`.
+- A aplicação envia `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` e HSTS quando acessada por HTTPS.
+- Dados de API não são armazenados em cache.
+- Links coletados e enviados ao Telegram são aceitos apenas quando usam HTTPS e pertencem a `in.gov.br` ou `www.in.gov.br`.
+- O frontend escapa texto antes de inserir conteúdo retornado pela API e valida novamente o domínio do link.
+- A aplicação não usa cookies de autenticação; por isso, o fluxo de API por cabeçalho não depende de sessão nem de CSRF.
+
+Boas práticas operacionais:
+
 - Não commite `.env`, tokens, chaves de API ou URLs de banco com senha.
-- Use `READ_API_KEY` e `SCRAPE_API_KEY` diferentes e longas.
-- Mantenha o `TELEGRAM_BOT_TOKEN` apenas nos secrets do Render.
-- Se um token for compartilhado ou exposto, revogue-o no @BotFather e gere outro.
-- O endpoint de scraping é protegido por `X-API-Key`.
+- Use chaves longas, aleatórias e diferentes para leitura e scraping.
+- Mantenha o `TELEGRAM_BOT_TOKEN` somente nos secrets do Render e do GitHub Actions quando necessário.
+- Se uma chave ou token for compartilhado, revogue-o e gere outro. O token do Telegram que foi compartilhado durante a configuração deve ser rotacionado no `@BotFather` antes de uma operação pública.
+- Revise periodicamente os logs do Render e as execuções do GitHub Actions.
 - O link publicado pelo bot aponta para o DOU; a fonte oficial deve ser lida antes de qualquer uso jurídico.
+
+### Dependências
+
+`requirements.txt` contém apenas dependências de runtime. `requirements-dev.txt` adiciona ferramentas de teste e auditoria. Para verificar vulnerabilidades conhecidas:
+
+```bash
+pip install -r requirements-dev.txt
+pip-audit -r requirements.txt
+```
+
+Atualize as dependências quando o auditor indicar uma versão corrigida e rode toda a suíte de testes antes do deploy.
 
 ## Estrutura do projeto
 

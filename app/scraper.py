@@ -2,7 +2,7 @@ import hashlib
 import json
 import re
 from datetime import date
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import requests
 from bs4 import BeautifulSoup
@@ -12,6 +12,7 @@ from .db import save_publications, save_run
 from .models import Publication
 
 LAW_RE = re.compile(r"\b(Lei|Medida Provisória)\s*(?:n[ºo.]?\s*)?([0-9][\d.]*(?:-[A-Z]{1,3})?)(?:,?\s+de\s+([0-9]{1,2}\s+de\s+\w+\s+de\s+\d{4}))?", re.I)
+OFFICIAL_HOSTS = {"in.gov.br", "www.in.gov.br"}
 
 
 class DouScraper:
@@ -44,7 +45,9 @@ class DouScraper:
             for link in soup.select("a[href]"):
                 text = " ".join(link.get_text(" ", strip=True).split())
                 if text and LAW_RE.search(text):
-                    texts.append((text, urljoin(self.settings.dou_base_url, link.get("href", ""))))
+                    source_url = self._safe_source_url(link.get("href", ""), self.settings.dou_base_url)
+                    if source_url:
+                        texts.append((text, source_url))
 
         publications: list[Publication] = []
         seen: set[str] = set()
@@ -55,20 +58,34 @@ class DouScraper:
             kind = "lei" if match.group(1).lower() == "lei" else "medida_provisoria"
             number = match.group(2).replace(".", "")
             title = " ".join(text.split())
+            source_url = self._safe_source_url(link, self.settings.dou_base_url)
+            if not source_url:
+                continue
             fingerprint = hashlib.sha256(f"{target_date}|{kind}|{number}|{title}".encode()).hexdigest()
             if fingerprint in seen:
                 continue
             seen.add(fingerprint)
             publications.append(Publication(title=title, kind=kind, number=number,
-                summary=None, published_date=target_date, source_url=link, fingerprint=fingerprint))
+                summary=None, published_date=target_date, source_url=source_url, fingerprint=fingerprint))
         return publications
+
+    @staticmethod
+    def _safe_source_url(value: str, base_url: str) -> str | None:
+        absolute = urljoin(base_url, value)
+        parsed = urlparse(absolute)
+        hostname = (parsed.hostname or "").lower().rstrip(".")
+        if parsed.scheme != "https" or hostname not in OFFICIAL_HOSTS:
+            return None
+        return absolute
 
     def _collect_json(self, value, out: list[tuple[str, str]]) -> None:
         if isinstance(value, dict):
             link = value.get("urlTitle") or value.get("url") or value.get("link")
             text = value.get("title") or value.get("ementa") or value.get("texto")
             if isinstance(text, str) and isinstance(link, str):
-                out.append((text, urljoin("https://www.in.gov.br/en/web/dou/-/", link) if not link.startswith("http") else link))
+                source_url = self._safe_source_url(link, "https://www.in.gov.br/en/web/dou/-/")
+                if source_url:
+                    out.append((text, source_url))
             for child in value.values():
                 self._collect_json(child, out)
         elif isinstance(value, list):

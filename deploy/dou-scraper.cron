@@ -1,3 +1,4 @@
 # Exemplo de cron: ajuste o caminho absoluto do projeto.
 # O servidor deve estar no fuso de Brasília ou o comando deve usar TZ=America/Sao_Paulo.
-0 * * * * cd /caminho/absoluto/bot_nova_lei && .venv/bin/python -m app.cli scrape >> logs/scrape.log 2>&1
+# 08:00 America/Sao_Paulo. Ajuste o TZ se o servidor estiver em outro fuso.
+0 8 * * * cd /caminho/absoluto/bot_nova_lei && .venv/bin/python -m app.cli scrape >> logs/scrape.log 2>&1
