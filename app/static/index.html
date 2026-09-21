@@ -1,7 +1,102 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DOU Leis e MPs</title>
-<style>body{font-family:system-ui,sans-serif;max-width:1000px;margin:40px auto;padding:0 20px;color:#182230;background:#f6f8fa}h1{margin-bottom:4px}.card{background:white;border:1px solid #dce2e8;border-radius:12px;padding:20px;margin:18px 0}button{background:#1264a3;color:white;border:0;border-radius:7px;padding:10px 14px;cursor:pointer}input{padding:9px;border:1px solid #bbc5d0;border-radius:6px}li{margin:14px 0}.meta{color:#657383;font-size:.9em}.empty{color:#657383}</style></head>
-<body><h1>DOU — Leis e MPs</h1><p class="meta">Agendamento: <span id="schedule">__SCHEDULE__</span></p>
-<div class="card"><h2>Testar coleta</h2><p>Escolha uma data e informe a chave de scraping.</p><input id="date" type="date"><input id="scrape-key" type="password" placeholder="SCRAPE_API_KEY"><input id="read-key" type="password" placeholder="READ_API_KEY"><button onclick="scrape()">Executar scraper</button><span id="status"></span></div>
-<div class="card"><h2>Publicações salvas</h2><button onclick="loadItems()">Atualizar</button><ul id="items"><li class="empty">Carregando…</li></ul></div>
-<script>const today=new Date().toISOString().slice(0,10);document.querySelector('#date').value=today;async function loadItems(){const d=document.querySelector('#date').value;const r=await fetch('/api/laws?date='+d,{headers:{'X-API-Key':document.querySelector('#read-key').value}});const items=await r.json();document.querySelector('#items').innerHTML=items.length?items.map(x=>`<li><a href="${x.source_url}" target="_blank">${x.title}</a><div class="meta">${x.kind} · ${x.published_date}</div></li>`).join(''):'<li class="empty">Nenhuma publicação salva para esta data.</li>'}async function scrape(){const s=document.querySelector('#status');s.textContent=' Executando…';try{const r=await fetch('/api/scrape',{method:'POST',headers:{'Content-Type':'application/json','X-API-Key':document.querySelector('#scrape-key').value},body:JSON.stringify({date:document.querySelector('#date').value})});const x=await r.json();s.textContent=' '+(r.ok?`OK: ${x.found} encontrada(s).`:'Erro: '+(x.detail||'falha'));loadItems()}catch(e){s.textContent=' Erro de conexão.'}}loadItems();</script></body></html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1324">
+  <title>DOU Leis e MPs</title>
+  <style>
+    :root { color-scheme: light; --ink:#162033; --muted:#64748b; --line:#dbe4ef; --surface:rgba(255,255,255,.92); --primary:#2563eb; --primary-dark:#1d4ed8; --success:#0f9f6e; --warning:#b7791f; --shadow:0 18px 50px rgba(30,55,90,.10); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#f4f7fb; background-image:radial-gradient(circle at 15% 0%,rgba(37,99,235,.13),transparent 32rem),radial-gradient(circle at 90% 10%,rgba(14,165,164,.10),transparent 27rem); }
+    a { color:var(--primary-dark); }
+    .shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:34px 0 58px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:28px; }
+    .brand { display:flex; align-items:center; gap:12px; }
+    .brand-mark { display:grid; place-items:center; width:42px; height:42px; border-radius:13px; color:white; background:linear-gradient(145deg,#2563eb,#0f766e); box-shadow:0 10px 25px rgba(37,99,235,.25); font-size:21px; }
+    .brand strong { display:block; font-size:1rem; letter-spacing:-.02em; }
+    .brand small { color:var(--muted); }
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; color:var(--muted); background:rgba(255,255,255,.7); font-size:.85rem; white-space:nowrap; }
+    .dot { width:8px; height:8px; border-radius:50%; background:var(--warning); }
+    .dot.ok { background:var(--success); box-shadow:0 0 0 4px rgba(15,159,110,.12); }
+    .hero { display:grid; grid-template-columns:1.4fr .8fr; gap:24px; align-items:stretch; margin-bottom:20px; }
+    .hero-copy,.timer-card,.card { border:1px solid rgba(219,228,239,.95); border-radius:24px; background:var(--surface); box-shadow:var(--shadow); backdrop-filter:blur(10px); }
+    .hero-copy { padding:34px; background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(239,246,255,.90)); }
+    .eyebrow { margin:0 0 10px; color:var(--primary-dark); font-size:.76rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
+    h1 { max-width:720px; margin:0; font-size:clamp(2rem,4vw,3.65rem); line-height:1.02; letter-spacing:-.065em; }
+    .hero-copy p:not(.eyebrow) { max-width:650px; margin:18px 0 0; color:var(--muted); font-size:1.04rem; line-height:1.65; }
+    .timer-card { display:flex; flex-direction:column; justify-content:space-between; padding:26px; color:white; border-color:transparent; background:linear-gradient(150deg,#0b1324,#16356b 72%,#0f766e); }
+    .timer-card h2 { margin:0; font-size:1rem; font-weight:650; color:rgba(255,255,255,.78); }
+    .timer { margin:14px 0 8px; font-variant-numeric:tabular-nums; font-size:clamp(2.4rem,5vw,4rem); font-weight:800; letter-spacing:-.06em; }
+    .timer-card p { margin:0; color:rgba(255,255,255,.72); line-height:1.5; }
+    .timer-card .schedule { margin-top:22px; padding-top:16px; border-top:1px solid rgba(255,255,255,.16); font-size:.88rem; }
+    .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+    .metric { padding:18px 20px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.82); }
+    .metric-label { color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; }
+    .metric-value { margin-top:7px; font-size:1.08rem; font-weight:750; }
+    .content-grid { display:grid; grid-template-columns:.82fr 1.18fr; gap:20px; align-items:start; }
+    .card { padding:24px; }
+    .card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:18px; }
+    h2 { margin:0; font-size:1.18rem; letter-spacing:-.025em; }
+    .card-description { margin:6px 0 0; color:var(--muted); font-size:.9rem; line-height:1.5; }
+    .field { display:grid; gap:7px; margin:14px 0; }
+    label { color:#334155; font-size:.84rem; font-weight:700; }
+    input { width:100%; padding:12px 13px; border:1px solid #cbd6e3; border-radius:11px; color:var(--ink); background:#fff; font:inherit; outline:none; transition:border-color .2s,box-shadow .2s; }
+    input:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(37,99,235,.12); }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:18px; }
+    button { border:0; border-radius:11px; padding:12px 16px; color:white; background:var(--primary); font:inherit; font-weight:750; cursor:pointer; transition:transform .15s,background .15s,opacity .15s; }
+    button:hover { background:var(--primary-dark); transform:translateY(-1px); }
+    button:disabled { opacity:.6; cursor:wait; transform:none; }
+    button.secondary { color:#24405d; background:#eaf1fb; }
+    button.secondary:hover { background:#dce8f8; }
+    .status { min-height:21px; color:var(--muted); font-size:.86rem; }
+    .status.ok { color:var(--success); }
+    .status.error { color:#b42318; }
+    .hint { margin:18px 0 0; padding:12px 14px; border-radius:12px; color:#53657d; background:#f5f8fc; font-size:.82rem; line-height:1.5; }
+    .publication-list { display:grid; gap:10px; max-height:560px; overflow:auto; padding-right:3px; }
+    .publication { padding:15px 16px; border:1px solid #e1e9f2; border-radius:14px; background:#fbfdff; }
+    .publication a { display:block; margin-bottom:8px; font-weight:750; line-height:1.4; text-decoration:none; }
+    .publication a:hover { text-decoration:underline; }
+    .meta { color:var(--muted); font-size:.8rem; }
+    .empty { padding:34px 18px; border:1px dashed #cbd6e3; border-radius:14px; color:var(--muted); text-align:center; }
+    .footer { margin-top:26px; color:var(--muted); text-align:center; font-size:.82rem; }
+    @media (max-width:820px) { .hero,.content-grid { grid-template-columns:1fr; } .metrics { grid-template-columns:1fr; } .hero-copy { padding:26px; } .topbar { align-items:flex-start; flex-direction:column; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">§</div><div><strong>DOU Leis e MPs</strong><small>Monitoramento jurídico automatizado</small></div></div>
+      <div class="pill"><span id="health-dot" class="dot"></span><span id="health-label">Verificando serviço…</span></div>
+    </header>
+    <section class="hero">
+      <div class="hero-copy"><p class="eyebrow">Diário Oficial da União</p><h1>Descubra o que mudou na legislação.</h1><p>O sistema consulta a Seção 1 do DOU, identifica Leis e Medidas Provisórias e envia novidades para o seu grupo do Telegram.</p></div>
+      <div class="timer-card"><div><h2>Próxima verificação</h2><div id="countdown" class="timer">--:--:--</div><p id="next-check-label">Calculando o próximo ciclo…</p></div><p class="schedule">Agendamento: <strong id="schedule">__SCHEDULE__</strong></p></div>
+    </section>
+    <section class="metrics" aria-label="Status do sistema">
+      <div class="metric"><div class="metric-label">Frequência</div><div id="interval" class="metric-value">--</div></div>
+      <div class="metric"><div class="metric-label">Fuso horário</div><div id="timezone" class="metric-value">--</div></div>
+      <div class="metric"><div class="metric-label">Telegram</div><div id="telegram" class="metric-value">Verificando…</div></div>
+    </section>
+    <main class="content-grid">
+      <section class="card"><div class="card-header"><div><h2>Executar coleta manual</h2><p class="card-description">Use somente quando quiser consultar uma data imediatamente.</p></div></div><div class="field"><label for="date">Data da publicação</label><input id="date" type="date"></div><div class="field"><label for="scrape-key">Chave de scraping</label><input id="scrape-key" type="password" autocomplete="off" placeholder="SCRAPE_API_KEY"></div><div class="actions"><button id="scrape-button" onclick="scrape()">Executar scraper</button><span id="scrape-status" class="status" role="status"></span></div><p class="hint">A coleta automática já está ativa. Esta ação é apenas um atalho manual e não substitui o agendamento.</p></section>
+      <section class="card"><div class="card-header"><div><h2>Publicações salvas</h2><p class="card-description">Consulte os itens coletados para uma data específica.</p></div><button class="secondary" onclick="loadItems()">Atualizar</button></div><div class="field"><label for="read-key">Chave de leitura</label><input id="read-key" type="password" autocomplete="off" placeholder="READ_API_KEY"></div><div id="items" class="publication-list"><div class="empty">Informe a chave de leitura para carregar as publicações.</div></div></section>
+    </main>
+    <footer class="footer">Dados consultados na fonte oficial do DOU · O sistema não substitui a leitura do ato oficial.</footer>
+  </div>
+  <script>
+    const state = { intervalMinutes: 60, nextCheck: null };
+    const $ = (selector) => document.querySelector(selector);
+    const pad = (value) => String(value).padStart(2, '0');
+    function localDate() { const now = new Date(); return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`; }
+    function setStatus(message, kind = '') { const element = $('#scrape-status'); element.textContent = message; element.className = `status ${kind}`; }
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }
+    function scheduleNextCheck() { const now = new Date(); const next = new Date(now.getTime() + state.intervalMinutes * 60 * 1000); if (state.intervalMinutes === 60) { next.setMinutes(0,0,0); next.setHours(next.getHours()+1); } state.nextCheck = next; }
+    function updateCountdown() { if (!state.nextCheck) return; const remaining = Math.max(0, state.nextCheck.getTime()-Date.now()); const totalSeconds = Math.floor(remaining/1000); $('#countdown').textContent = `${pad(Math.floor(totalSeconds/3600))}:${pad(Math.floor((totalSeconds%3600)/60))}:${pad(totalSeconds%60)}`; $('#next-check-label').textContent = `Estimativa para ${state.nextCheck.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; if (remaining === 0) scheduleNextCheck(); }
+    async function loadHealth() { try { const response = await fetch('/api/health'); const health = await response.json(); state.intervalMinutes = health.scrape_interval_minutes || 60; scheduleNextCheck(); $('#interval').textContent = `A cada ${state.intervalMinutes} min`; $('#timezone').textContent = health.timezone || '—'; $('#telegram').textContent = health.telegram_configured ? 'Conectado' : 'Não configurado'; $('#health-dot').classList.toggle('ok', response.ok); $('#health-label').textContent = response.ok ? 'Serviço online' : 'Serviço indisponível'; } catch (error) { $('#health-label').textContent = 'Não foi possível verificar'; $('#telegram').textContent = 'Indisponível'; } }
+    async function loadItems() { const readKey = $('#read-key').value.trim(); const date = $('#date').value; const list = $('#items'); if (!readKey) { list.innerHTML = '<div class="empty">Informe a chave de leitura para carregar as publicações.</div>'; return; } list.innerHTML = '<div class="empty">Carregando publicações…</div>'; try { const response = await fetch(`/api/laws?date=${encodeURIComponent(date)}`, {headers:{'X-API-Key':readKey}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.detail || 'Não foi possível carregar os dados.'); list.innerHTML = payload.length ? payload.map((item) => `<article class="publication"><a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener">${escapeHtml(item.title)}</a><div class="meta">${escapeHtml(item.kind)} · ${escapeHtml(item.published_date)}</div></article>`).join('') : '<div class="empty">Nenhuma publicação salva para esta data.</div>'; } catch (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; } }
+    async function scrape() { const key = $('#scrape-key').value.trim(); const button = $('#scrape-button'); if (!key) { setStatus('Informe a chave de scraping.', 'error'); return; } button.disabled = true; setStatus('Consultando o DOU…'); try { const response = await fetch('/api/scrape', {method:'POST',headers:{'Content-Type':'application/json','X-API-Key':key},body:JSON.stringify({date:$('#date').value})}); const payload = await response.json(); if (!response.ok) throw new Error(payload.detail || 'Falha na coleta.'); setStatus(`OK · ${payload.found} encontrada(s) · ${payload.new} nova(s) · ${payload.telegram_sent} enviada(s)`, 'ok'); await loadItems(); } catch (error) { setStatus(error.message, 'error'); } finally { button.disabled = false; } }
+    $('#date').value = localDate(); loadHealth(); updateCountdown(); setInterval(updateCountdown, 1000);
+  </script>
+</body>
+</html>
