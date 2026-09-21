@@ -17,6 +17,10 @@ services:
       - key: TELEGRAM_CHAT_ID
         sync: false
       - key: SCRAPE_INTERVAL_MINUTES
-        value: "60"
+        value: "1440"
+      - key: SCRAPE_HOUR
+        value: "8"
+      - key: SCRAPE_MINUTE
+        value: "0"
       - key: TIMEZONE
         value: America/Sao_Paulo

@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///data/dou.sqlite3"
     dou_base_url: str = "https://www.in.gov.br/leiturajornal"
     timezone: str = "America/Sao_Paulo"
-    scrape_interval_minutes: int = 60
+    scrape_interval_minutes: int = 1440
+    scrape_hour: int = 8
+    scrape_minute: int = 0
     read_api_key: str = ""
     scrape_api_key: str = ""
     telegram_bot_token: str = ""

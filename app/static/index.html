@@ -71,10 +71,10 @@
     </header>
     <section class="hero">
       <div class="hero-copy"><p class="eyebrow">Diário Oficial da União</p><h1>Descubra o que mudou na legislação.</h1><p>O sistema consulta a Seção 1 do DOU, identifica Leis e Medidas Provisórias e envia novidades para o seu grupo do Telegram.</p></div>
-      <div class="timer-card"><div><h2>Próxima verificação</h2><div id="countdown" class="timer">--:--:--</div><p id="next-check-label">Calculando o próximo ciclo…</p></div><p class="schedule">Agendamento: <strong id="schedule">__SCHEDULE__</strong></p></div>
+      <div class="timer-card"><div><h2>Próxima verificação</h2><div id="countdown" class="timer">--:--:--</div><p id="next-check-label">Calculando o próximo ciclo…</p></div><p class="schedule">Execução real: <strong id="schedule">__SCHEDULE__</strong></p></div>
     </section>
     <section class="metrics" aria-label="Status do sistema">
-      <div class="metric"><div class="metric-label">Frequência</div><div id="interval" class="metric-value">--</div></div>
+      <div class="metric"><div class="metric-label">Agendamento</div><div id="interval" class="metric-value">--</div></div>
       <div class="metric"><div class="metric-label">Fuso horário</div><div id="timezone" class="metric-value">--</div></div>
       <div class="metric"><div class="metric-label">Telegram</div><div id="telegram" class="metric-value">Verificando…</div></div>
     </section>
@@ -85,18 +85,18 @@
     <footer class="footer">Dados consultados na fonte oficial do DOU · O sistema não substitui a leitura do ato oficial.</footer>
   </div>
   <script>
-    const state = { intervalMinutes: 60, nextCheck: null };
+    const state = { scheduleHour: 8, scheduleMinute: 0, nextCheck: null };
     const $ = (selector) => document.querySelector(selector);
     const pad = (value) => String(value).padStart(2, '0');
     function localDate() { const now = new Date(); return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`; }
     function setStatus(message, kind = '') { const element = $('#scrape-status'); element.textContent = message; element.className = `status ${kind}`; }
     function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }
-    function scheduleNextCheck() { const now = new Date(); const next = new Date(now.getTime() + state.intervalMinutes * 60 * 1000); if (state.intervalMinutes === 60) { next.setMinutes(0,0,0); next.setHours(next.getHours()+1); } state.nextCheck = next; }
+    function scheduleNextCheck() { const now = new Date(); const next = new Date(now); next.setHours(state.scheduleHour, state.scheduleMinute, 0, 0); if (next <= now) next.setDate(next.getDate() + 1); state.nextCheck = next; updateCountdown(); }
     function updateCountdown() { if (!state.nextCheck) return; const remaining = Math.max(0, state.nextCheck.getTime()-Date.now()); const totalSeconds = Math.floor(remaining/1000); $('#countdown').textContent = `${pad(Math.floor(totalSeconds/3600))}:${pad(Math.floor((totalSeconds%3600)/60))}:${pad(totalSeconds%60)}`; $('#next-check-label').textContent = `Estimativa para ${state.nextCheck.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; if (remaining === 0) scheduleNextCheck(); }
-    async function loadHealth() { try { const response = await fetch('/api/health'); const health = await response.json(); state.intervalMinutes = health.scrape_interval_minutes || 60; scheduleNextCheck(); $('#interval').textContent = `A cada ${state.intervalMinutes} min`; $('#timezone').textContent = health.timezone || '—'; $('#telegram').textContent = health.telegram_configured ? 'Conectado' : 'Não configurado'; $('#health-dot').classList.toggle('ok', response.ok); $('#health-label').textContent = response.ok ? 'Serviço online' : 'Serviço indisponível'; } catch (error) { $('#health-label').textContent = 'Não foi possível verificar'; $('#telegram').textContent = 'Indisponível'; } }
+    async function loadHealth() { try { const response = await fetch('/api/health'); const health = await response.json(); state.scheduleHour = Number.isInteger(health.schedule_hour) ? health.schedule_hour : 8; state.scheduleMinute = Number.isInteger(health.schedule_minute) ? health.schedule_minute : 0; scheduleNextCheck(); $('#interval').textContent = health.schedule_label || `Diariamente às ${pad(state.scheduleHour)}:${pad(state.scheduleMinute)}`; $('#schedule').textContent = health.schedule_label || $('#schedule').textContent; $('#timezone').textContent = health.timezone || '—'; $('#telegram').textContent = health.telegram_configured ? 'Conectado' : 'Não configurado'; $('#health-dot').classList.toggle('ok', response.ok); $('#health-label').textContent = response.ok ? 'Serviço online' : 'Serviço indisponível'; } catch (error) { $('#health-label').textContent = 'Não foi possível verificar'; $('#telegram').textContent = 'Indisponível'; } }
     async function loadItems() { const readKey = $('#read-key').value.trim(); const date = $('#date').value; const list = $('#items'); if (!readKey) { list.innerHTML = '<div class="empty">Informe a chave de leitura para carregar as publicações.</div>'; return; } list.innerHTML = '<div class="empty">Carregando publicações…</div>'; try { const response = await fetch(`/api/laws?date=${encodeURIComponent(date)}`, {headers:{'X-API-Key':readKey}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.detail || 'Não foi possível carregar os dados.'); list.innerHTML = payload.length ? payload.map((item) => `<article class="publication"><a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener">${escapeHtml(item.title)}</a><div class="meta">${escapeHtml(item.kind)} · ${escapeHtml(item.published_date)}</div></article>`).join('') : '<div class="empty">Nenhuma publicação salva para esta data.</div>'; } catch (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; } }
     async function scrape() { const key = $('#scrape-key').value.trim(); const button = $('#scrape-button'); if (!key) { setStatus('Informe a chave de scraping.', 'error'); return; } button.disabled = true; setStatus('Consultando o DOU…'); try { const response = await fetch('/api/scrape', {method:'POST',headers:{'Content-Type':'application/json','X-API-Key':key},body:JSON.stringify({date:$('#date').value})}); const payload = await response.json(); if (!response.ok) throw new Error(payload.detail || 'Falha na coleta.'); setStatus(`OK · ${payload.found} encontrada(s) · ${payload.new} nova(s) · ${payload.telegram_sent} enviada(s)`, 'ok'); await loadItems(); } catch (error) { setStatus(error.message, 'error'); } finally { button.disabled = false; } }
-    $('#date').value = localDate(); loadHealth(); updateCountdown(); setInterval(updateCountdown, 1000);
+    $('#date').value = localDate(); loadHealth(); setInterval(updateCountdown, 1000);
   </script>
 </body>
 </html>

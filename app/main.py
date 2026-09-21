@@ -4,7 +4,7 @@ import secrets
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -29,11 +29,18 @@ def run_scheduled_scrape() -> None:
     publish_pending_telegram()
 
 
+def schedule_label() -> str:
+    return f"diariamente às {settings.scrape_hour:02d}:{settings.scrape_minute:02d} ({settings.timezone})"
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     init_db()
-    scheduler.add_job(run_scheduled_scrape, IntervalTrigger(minutes=settings.scrape_interval_minutes,
-        timezone=ZoneInfo(settings.timezone)), id="hourly-scrape", replace_existing=True)
+    scheduler.add_job(run_scheduled_scrape, CronTrigger(
+        hour=settings.scrape_hour,
+        minute=settings.scrape_minute,
+        timezone=ZoneInfo(settings.timezone),
+    ), id="daily-scrape", replace_existing=True)
     scheduler.start()
     try:
         yield
@@ -48,6 +55,8 @@ app = FastAPI(title=settings.app_name, version="0.1.0", lifespan=lifespan)
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok", "scrape_interval_minutes": settings.scrape_interval_minutes,
+            "schedule_hour": settings.scrape_hour, "schedule_minute": settings.scrape_minute,
+            "schedule_label": schedule_label(),
             "timezone": settings.timezone,
             "auth_configured": bool(settings.read_api_key and settings.scrape_api_key),
             "telegram_configured": bool(settings.telegram_bot_token and settings.telegram_chat_id)}
@@ -87,4 +96,4 @@ def runs(limit: int = Query(default=20, le=100), _auth: None = Depends(require_a
 @app.get("/", response_class=HTMLResponse)
 def interface() -> str:
     html = Path(__file__).with_name("static").joinpath("index.html").read_text(encoding="utf-8")
-    return html.replace("__SCHEDULE__", f"a cada {settings.scrape_interval_minutes} minutos ({settings.timezone})")
+    return html.replace("__SCHEDULE__", schedule_label())

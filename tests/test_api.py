@@ -7,7 +7,11 @@ def test_api_lifecycle_and_read_endpoints():
     settings.read_api_key = "read-key"
     settings.scrape_api_key = "scrape-key"
     with TestClient(app) as client:
-        assert client.get("/api/health").json()["status"] == "ok"
+        health = client.get("/api/health").json()
+        assert health["status"] == "ok"
+        assert health["schedule_hour"] == settings.scrape_hour
+        assert health["schedule_minute"] == settings.scrape_minute
+        assert "diariamente às" in health["schedule_label"]
         assert client.get("/api/laws?date=2026-09-20").status_code == 401
         assert client.get("/api/laws?date=2026-09-20", headers={"X-API-Key": "read-key"}).status_code == 200
         assert client.get("/api/runs").status_code == 401

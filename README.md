@@ -16,7 +16,7 @@ A mensagem enviada ao Telegram contém o título da publicação e um link **Cli
 ## Arquitetura
 
 ```text
-GitHub Actions (a cada hora)
+GitHub Actions (diariamente às 08:00)
              |
              v
       POST /api/scrape
@@ -31,7 +31,7 @@ GitHub Actions (a cada hora)
     GET /api/laws
 ```
 
-O serviço também possui um agendador interno de 60 minutos. O workflow do GitHub Actions é a camada mais importante em produção gratuita, pois acorda o serviço do Render quando ele entra em estado de espera.
+O serviço também possui um agendador interno diário. O workflow do GitHub Actions é a camada mais importante em produção gratuita, pois acorda o serviço do Render quando ele entra em estado de espera.
 
 ## Interface web
 
@@ -44,13 +44,13 @@ https://dou-leis-mps.onrender.com/
 Ela mostra:
 
 - status do serviço;
-- intervalo e fuso horário configurados;
+- horário diário e fuso horário configurados;
 - indicador de conexão com o Telegram;
 - contador regressivo para a próxima verificação estimada;
 - execução manual por data;
 - lista de publicações salvas.
 
-O contador é uma estimativa visual baseada no intervalo configurado. A execução real é feita pelo agendador interno e pelo workflow horário.
+O contador é uma estimativa visual baseada no horário diário configurado. A execução real é feita pelo agendador interno e pelo workflow diário.
 
 ## Rodar localmente
 
@@ -89,7 +89,9 @@ Copie `.env.example` e preencha os valores no ambiente local ou no Render. Nunca
 | `SCRAPE_API_KEY` | Sim | Autoriza execuções em `/api/scrape`. Deve ser diferente da READ key. |
 | `TELEGRAM_BOT_TOKEN` | Para publicar | Token criado pelo @BotFather. |
 | `TELEGRAM_CHAT_ID` | Para publicar | ID do canal/grupo, por exemplo `-100...`, ou `@username` em canal público. |
-| `SCRAPE_INTERVAL_MINUTES` | Não | Intervalo do agendador interno. Padrão: `60`. |
+| `SCRAPE_INTERVAL_MINUTES` | Compatibilidade | Mantida como `1440` para indicar um ciclo diário. O horário fixo é definido pelas duas variáveis abaixo. |
+| `SCRAPE_HOUR` | Não | Hora da coleta no fuso configurado. Padrão: `8`. |
+| `SCRAPE_MINUTE` | Não | Minuto da coleta. Padrão: `0`. |
 | `TIMEZONE` | Não | Fuso horário. Padrão: `America/Sao_Paulo`. |
 | `DOU_BASE_URL` | Não | Endpoint da leitura do DOU. |
 | `REQUEST_TIMEOUT` | Não | Timeout das requisições externas. |
@@ -129,7 +131,10 @@ Endpoint público de saúde e configuração não sensível:
 ```json
 {
   "status": "ok",
-  "scrape_interval_minutes": 60,
+  "scrape_interval_minutes": 1440,
+  "schedule_hour": 8,
+  "schedule_minute": 0,
+  "schedule_label": "diariamente às 08:00 (America/Sao_Paulo)",
   "timezone": "America/Sao_Paulo",
   "auth_configured": true,
   "telegram_configured": true
@@ -167,7 +172,9 @@ Lista as últimas execuções do scraper. Exige `X-API-Key: READ_API_KEY`.
 
 ## Agendamento em produção
 
-O workflow `.github/workflows/hourly-scrape.yml` é executado no minuto `00` de cada hora e faz uma requisição autenticada para `/api/scrape`.
+O workflow `.github/workflows/hourly-scrape.yml` é executado uma vez por dia às 08:00 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `0 11 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
+
+O serviço também agenda uma execução diária às 08:00 usando `CronTrigger` no fuso `America/Sao_Paulo`. Os dois mecanismos possuem a mesma finalidade; o workflow do GitHub funciona como despertador confiável para o plano gratuito do Render.
 
 No GitHub, configure estes secrets no repositório:
 
