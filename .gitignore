@@ -5,4 +5,5 @@ __pycache__/
 *.pyc
 data/*.sqlite3
 logs/
-
+node_modules/
+.wrangler/

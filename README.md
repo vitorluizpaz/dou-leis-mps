@@ -211,6 +211,20 @@ O arquivo `render.yaml` descreve o serviço web e o banco PostgreSQL. O fluxo us
 
 O plano gratuito pode colocar o web service em espera após inatividade. Por isso o workflow diário do GitHub Actions deve permanecer ativo. O banco PostgreSQL gratuito também pode ter prazo ou limites definidos pelo provedor; monitore o painel do Render.
 
+## Landing page no Cloudflare Workers
+
+A landing page é publicada como asset estático no Cloudflare Workers. O Worker encaminha as rotas `/api/*` ao FastAPI no Render, onde continuam a execução do scraper, o PostgreSQL e o agendamento diário. O endereço do grupo do Telegram está configurado nos botões da página.
+
+Arquivos da integração: `wrangler.jsonc`, `cloudflare/worker.js`, `package.json` e `package-lock.json`. A página e seu JavaScript ficam em `app/static/`. Para desenvolver localmente e publicar:
+
+```bash
+npm install
+npm run dev:worker
+npm run deploy:worker
+```
+
+O Wrangler solicitará login na Cloudflare na primeira publicação. O Worker usa `BACKEND_URL` definido em `wrangler.jsonc`; altere essa variável somente se o serviço de API mudar de endereço. O deploy cria o hostname `radar-dou-leis-mps.<subdominio>.workers.dev`; depois, adicione um domínio personalizado pelo painel Cloudflare, se desejado.
+
 ## Histórico de teste
 
 Para validar uma janela histórica, execute a API uma vez para cada data desejada. Exemplo para 14 dias:
@@ -275,7 +289,10 @@ app/
   models.py           # modelo de publicação
   scraper.py          # coleta e parsing do DOU
   telegram.py         # envio e deduplicação no Telegram
-  static/index.html   # interface web
+  static/index.html   # landing page
+  static/app.js       # status, contador e área de operação
+cloudflare/worker.js  # assets e proxy da API para o Render
+wrangler.jsonc        # configuração do Cloudflare Worker
 tests/                # testes automatizados
 render.yaml           # configuração do Render
 ```

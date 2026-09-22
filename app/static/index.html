@@ -3,107 +3,164 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1324">
-  <title>DOU Leis e MPs</title>
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="Monitoramento diário de Leis e Medidas Provisórias publicadas no Diário Oficial da União, com alertas no Telegram.">
+  <title>Radar do DOU — Leis e Medidas Provisórias</title>
   <style>
-    :root { color-scheme: light; --ink:#162033; --muted:#64748b; --line:#dbe4ef; --surface:rgba(255,255,255,.92); --primary:#2563eb; --primary-dark:#1d4ed8; --success:#0f9f6e; --warning:#b7791f; --shadow:0 18px 50px rgba(30,55,90,.10); }
+    :root { color-scheme:dark; --page:#07111f; --surface:#0f2035; --ink:#f7fbff; --muted:#9fb1c7; --line:rgba(168,198,229,.16); --blue:#48a9ff; --cyan:#52e1d0; --green:#56d39b; --shadow:0 26px 80px rgba(0,0,0,.3); }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:#f4f7fb; background-image:radial-gradient(circle at 15% 0%,rgba(37,99,235,.13),transparent 32rem),radial-gradient(circle at 90% 10%,rgba(14,165,164,.10),transparent 27rem); }
-    a { color:var(--primary-dark); }
-    .shell { width:min(1120px,calc(100% - 32px)); margin:0 auto; padding:34px 0 58px; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:28px; }
-    .brand { display:flex; align-items:center; gap:12px; }
-    .brand-mark { display:grid; place-items:center; width:42px; height:42px; border-radius:13px; color:white; background:linear-gradient(145deg,#2563eb,#0f766e); box-shadow:0 10px 25px rgba(37,99,235,.25); font-size:21px; }
-    .brand strong { display:block; font-size:1rem; letter-spacing:-.02em; }
-    .brand small { color:var(--muted); }
-    .pill { display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; color:var(--muted); background:rgba(255,255,255,.7); font-size:.85rem; white-space:nowrap; }
-    .dot { width:8px; height:8px; border-radius:50%; background:var(--warning); }
-    .dot.ok { background:var(--success); box-shadow:0 0 0 4px rgba(15,159,110,.12); }
-    .hero { display:grid; grid-template-columns:1.4fr .8fr; gap:24px; align-items:stretch; margin-bottom:20px; }
-    .hero-copy,.timer-card,.card { border:1px solid rgba(219,228,239,.95); border-radius:24px; background:var(--surface); box-shadow:var(--shadow); backdrop-filter:blur(10px); }
-    .hero-copy { padding:34px; background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(239,246,255,.90)); }
-    .eyebrow { margin:0 0 10px; color:var(--primary-dark); font-size:.76rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-    h1 { max-width:720px; margin:0; font-size:clamp(2rem,4vw,3.65rem); line-height:1.02; letter-spacing:-.065em; }
-    .hero-copy p:not(.eyebrow) { max-width:650px; margin:18px 0 0; color:var(--muted); font-size:1.04rem; line-height:1.65; }
-    .hero-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; }
-    .telegram-button { display:inline-flex; align-items:center; gap:10px; padding:13px 18px; border-radius:12px; color:white; background:#229ed9; box-shadow:0 10px 24px rgba(34,158,217,.24); font-weight:800; text-decoration:none; transition:transform .15s,background .15s; }
-    .telegram-button:hover { color:white; background:#168ac2; transform:translateY(-1px); }
-    .telegram-button[hidden] { display:none; }
-    .timer-card { display:flex; flex-direction:column; justify-content:space-between; padding:26px; color:white; border-color:transparent; background:linear-gradient(150deg,#0b1324,#16356b 72%,#0f766e); }
-    .timer-card h2 { margin:0; font-size:1rem; font-weight:650; color:rgba(255,255,255,.78); }
-    .timer { margin:14px 0 8px; font-variant-numeric:tabular-nums; font-size:clamp(2.4rem,5vw,4rem); font-weight:800; letter-spacing:-.06em; }
-    .timer-card p { margin:0; color:rgba(255,255,255,.72); line-height:1.5; }
-    .timer-card .schedule { margin-top:22px; padding-top:16px; border-top:1px solid rgba(255,255,255,.16); font-size:.88rem; }
-    .metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
-    .metric { padding:18px 20px; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.82); }
-    .metric-label { color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; }
-    .metric-value { margin-top:7px; font-size:1.08rem; font-weight:750; }
-    .content-grid { display:grid; grid-template-columns:.82fr 1.18fr; gap:20px; align-items:start; }
-    .card { padding:24px; }
-    .card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:18px; }
-    h2 { margin:0; font-size:1.18rem; letter-spacing:-.025em; }
-    .card-description { margin:6px 0 0; color:var(--muted); font-size:.9rem; line-height:1.5; }
-    .field { display:grid; gap:7px; margin:14px 0; }
-    label { color:#334155; font-size:.84rem; font-weight:700; }
-    input { width:100%; padding:12px 13px; border:1px solid #cbd6e3; border-radius:11px; color:var(--ink); background:#fff; font:inherit; outline:none; transition:border-color .2s,box-shadow .2s; }
-    input:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(37,99,235,.12); }
-    .actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:18px; }
-    button { border:0; border-radius:11px; padding:12px 16px; color:white; background:var(--primary); font:inherit; font-weight:750; cursor:pointer; transition:transform .15s,background .15s,opacity .15s; }
-    button:hover { background:var(--primary-dark); transform:translateY(-1px); }
-    button:disabled { opacity:.6; cursor:wait; transform:none; }
-    button.secondary { color:#24405d; background:#eaf1fb; }
-    button.secondary:hover { background:#dce8f8; }
-    .status { min-height:21px; color:var(--muted); font-size:.86rem; }
-    .status.ok { color:var(--success); }
-    .status.error { color:#b42318; }
-    .hint { margin:18px 0 0; padding:12px 14px; border-radius:12px; color:#53657d; background:#f5f8fc; font-size:.82rem; line-height:1.5; }
-    .publication-list { display:grid; gap:10px; max-height:560px; overflow:auto; padding-right:3px; }
-    .publication { padding:15px 16px; border:1px solid #e1e9f2; border-radius:14px; background:#fbfdff; }
-    .publication a { display:block; margin-bottom:8px; font-weight:750; line-height:1.4; text-decoration:none; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; min-height:100vh; color:var(--ink); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:radial-gradient(circle at 8% 0%,rgba(24,137,239,.21),transparent 29rem),radial-gradient(circle at 92% 18%,rgba(82,225,208,.12),transparent 26rem),var(--page); }
+    body::before { position:fixed; inset:0; z-index:-1; content:""; pointer-events:none; opacity:.16; background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px); background-size:54px 54px; mask-image:linear-gradient(to bottom,black,transparent 70%); }
+    a { color:inherit; }
+    button,input { font:inherit; }
+    .shell { width:min(1160px,calc(100% - 36px)); margin:0 auto; }
+    .nav { position:sticky; top:0; z-index:10; border-bottom:1px solid transparent; background:rgba(7,17,31,.76); backdrop-filter:blur(18px); }
+    .nav-inner { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:22px; }
+    .brand { display:flex; align-items:center; gap:12px; text-decoration:none; }
+    .brand-mark { display:grid; place-items:center; width:42px; height:42px; border-radius:14px; color:#04121e; background:linear-gradient(145deg,var(--cyan),#7bbcff); box-shadow:0 10px 30px rgba(72,169,255,.2); font-size:21px; font-weight:900; }
+    .brand-copy strong { display:block; font-size:.98rem; letter-spacing:-.02em; }
+    .brand-copy small { display:block; margin-top:2px; color:var(--muted); font-size:.72rem; letter-spacing:.05em; text-transform:uppercase; }
+    .nav-links { display:flex; align-items:center; gap:26px; }
+    .nav-links > a { color:#c5d3e3; font-size:.88rem; font-weight:650; text-decoration:none; }
+    .nav-links > a:hover { color:white; }
+    .button { display:inline-flex; min-height:48px; align-items:center; justify-content:center; gap:10px; padding:0 18px; border:1px solid transparent; border-radius:13px; color:#05121f; background:linear-gradient(135deg,#68e3d7,#65b7ff); box-shadow:0 14px 34px rgba(72,169,255,.19); font-weight:800; text-decoration:none; cursor:pointer; transition:transform .18s ease,box-shadow .18s ease,filter .18s ease; }
+    .button:hover { transform:translateY(-2px); box-shadow:0 18px 38px rgba(72,169,255,.27); filter:brightness(1.06); }
+    .button.secondary { color:#e8f4ff; border-color:var(--line); background:rgba(255,255,255,.055); box-shadow:none; }
+    .button.secondary:hover { background:rgba(255,255,255,.09); }
+    .button.small { min-height:40px; padding:0 14px; border-radius:11px; font-size:.84rem; }
+    .telegram-icon { width:18px; height:18px; fill:currentColor; }
+    .hero { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(340px,.85fr); gap:70px; align-items:center; padding:96px 0 72px; }
+    .eyebrow { display:inline-flex; align-items:center; gap:9px; margin:0 0 20px; color:#9feae1; font-size:.77rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+    .eyebrow::before { width:24px; height:1px; content:""; background:currentColor; }
+    h1 { max-width:760px; margin:0; font-size:clamp(3.1rem,7vw,6.25rem); line-height:.92; letter-spacing:-.075em; }
+    .accent { color:transparent; background:linear-gradient(105deg,#9af0e7 8%,#5ab0ff 84%); background-clip:text; -webkit-background-clip:text; }
+    .lead { max-width:670px; margin:28px 0 0; color:#b7c6d8; font-size:clamp(1.05rem,1.8vw,1.2rem); line-height:1.75; }
+    .hero-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:32px; }
+    .microcopy { display:flex; align-items:center; gap:9px; margin:18px 0 0; color:#8298b1; font-size:.78rem; }
+    .microcopy-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 5px rgba(86,211,155,.11); }
+    .monitor { position:relative; overflow:hidden; min-height:460px; padding:28px; border:1px solid rgba(137,188,235,.2); border-radius:28px; background:linear-gradient(155deg,rgba(19,41,66,.92),rgba(8,24,41,.96)); box-shadow:var(--shadow); }
+    .monitor::after { position:absolute; right:-90px; bottom:-110px; width:270px; height:270px; border-radius:50%; content:""; background:rgba(82,225,208,.1); filter:blur(8px); }
+    .monitor-top { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+    .monitor-label { color:#8da2ba; font-size:.74rem; font-weight:800; letter-spacing:.11em; text-transform:uppercase; }
+    .live-pill { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid rgba(86,211,155,.2); border-radius:999px; color:#93ebbd; background:rgba(86,211,155,.08); font-size:.72rem; font-weight:750; }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 4px rgba(86,211,155,.12); }
+    .monitor h2 { margin:48px 0 8px; font-size:1.04rem; font-weight:650; color:#aabbd0; }
+    .timer { font-variant-numeric:tabular-nums; font-size:clamp(3rem,6vw,4.8rem); font-weight:850; letter-spacing:-.065em; }
+    .next-label { margin:6px 0 30px; color:#8ea2b9; font-size:.88rem; }
+    .monitor-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .monitor-item { min-height:92px; padding:15px; border:1px solid var(--line); border-radius:15px; background:rgba(255,255,255,.035); }
+    .monitor-item span { display:block; color:#7f94ac; font-size:.68rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+    .monitor-item strong { display:block; margin-top:9px; color:#e9f5ff; font-size:.92rem; line-height:1.35; }
+    .trust-strip { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+    .trust-item { display:flex; align-items:center; justify-content:center; gap:12px; min-height:96px; color:#b7c8da; font-size:.88rem; font-weight:650; text-align:center; }
+    .trust-item + .trust-item { border-left:1px solid var(--line); }
+    .trust-icon { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; color:var(--cyan); background:rgba(82,225,208,.08); font-weight:900; }
+    .section { padding:104px 0; }
+    .section-head { display:flex; justify-content:space-between; align-items:flex-end; gap:28px; margin-bottom:38px; }
+    .section-kicker { margin:0 0 11px; color:#7ddbd0; font-size:.74rem; font-weight:800; letter-spacing:.13em; text-transform:uppercase; }
+    h2 { margin:0; font-size:clamp(2rem,4vw,3.25rem); line-height:1.03; letter-spacing:-.055em; }
+    .section-intro { max-width:470px; margin:0; color:var(--muted); line-height:1.65; }
+    .steps { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .step { position:relative; min-height:260px; padding:27px; overflow:hidden; border:1px solid var(--line); border-radius:22px; background:rgba(15,32,53,.68); }
+    .step-number { display:grid; place-items:center; width:42px; height:42px; border:1px solid rgba(82,225,208,.2); border-radius:13px; color:#94e9df; background:rgba(82,225,208,.07); font-size:.78rem; font-weight:850; }
+    .step h3 { margin:44px 0 12px; font-size:1.2rem; letter-spacing:-.025em; }
+    .step p { margin:0; color:var(--muted); font-size:.92rem; line-height:1.65; }
+    .step::after { position:absolute; right:-30px; bottom:-50px; color:rgba(255,255,255,.025); content:attr(data-step); font-size:9rem; font-weight:900; line-height:1; }
+    .cta { display:grid; grid-template-columns:1.2fr .8fr; gap:40px; align-items:center; padding:46px; border:1px solid rgba(108,190,255,.22); border-radius:28px; background:linear-gradient(125deg,rgba(20,72,112,.78),rgba(13,44,67,.78) 55%,rgba(17,83,77,.6)); box-shadow:var(--shadow); }
+    .cta h2 { max-width:700px; }
+    .cta p { max-width:650px; margin:16px 0 0; color:#bfd0e0; line-height:1.65; }
+    .cta-action { display:flex; justify-content:flex-end; }
+    .ops-wrap { padding:90px 0 80px; }
+    details.ops { border:1px solid var(--line); border-radius:22px; background:rgba(10,27,46,.74); }
+    details.ops > summary { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:22px 25px; cursor:pointer; list-style:none; }
+    details.ops > summary::-webkit-details-marker { display:none; }
+    .summary-title { font-weight:800; }
+    .summary-note { color:var(--muted); font-size:.8rem; }
+    .summary-arrow { transition:transform .2s; }
+    details[open] .summary-arrow { transform:rotate(180deg); }
+    .ops-content { display:grid; grid-template-columns:.85fr 1.15fr; gap:16px; padding:0 16px 16px; }
+    .ops-card { padding:22px; border:1px solid var(--line); border-radius:17px; background:rgba(255,255,255,.025); }
+    .ops-card h3 { margin:0; font-size:1.02rem; }
+    .ops-card > p { margin:7px 0 18px; color:var(--muted); font-size:.83rem; line-height:1.5; }
+    .field { display:grid; gap:7px; margin:12px 0; }
+    label { color:#c8d6e6; font-size:.78rem; font-weight:700; }
+    input { width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:10px; color:white; background:#091728; outline:none; }
+    input:focus { border-color:var(--blue); box-shadow:0 0 0 4px rgba(72,169,255,.11); }
+    .ops-actions { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:14px; }
+    .ops-actions button { min-height:42px; padding:0 14px; border:0; border-radius:10px; color:#06121e; background:#6cc4ff; font-weight:800; cursor:pointer; }
+    .status-message { color:var(--muted); font-size:.8rem; }
+    .status-message.ok { color:var(--green); }
+    .status-message.error { color:#ff9089; }
+    .publication-list { display:grid; gap:9px; max-height:360px; margin-top:14px; overflow:auto; }
+    .publication { padding:13px; border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.025); }
+    .publication a { display:block; margin-bottom:7px; color:#90cfff; font-size:.88rem; font-weight:750; line-height:1.45; text-decoration:none; }
     .publication a:hover { text-decoration:underline; }
-    .meta { color:var(--muted); font-size:.8rem; }
-    .empty { padding:34px 18px; border:1px dashed #cbd6e3; border-radius:14px; color:var(--muted); text-align:center; }
-    .footer { margin-top:26px; color:var(--muted); text-align:center; font-size:.82rem; }
-    @media (max-width:820px) { .hero,.content-grid { grid-template-columns:1fr; } .metrics { grid-template-columns:1fr; } .hero-copy { padding:26px; } .topbar { align-items:flex-start; flex-direction:column; } }
+    .meta,.empty { color:var(--muted); font-size:.76rem; }
+    .empty { padding:28px 16px; border:1px dashed var(--line); border-radius:12px; text-align:center; }
+    footer { padding:0 0 42px; color:#778da6; font-size:.78rem; }
+    .footer-inner { display:flex; justify-content:space-between; gap:24px; padding-top:28px; border-top:1px solid var(--line); }
+    @media (max-width:900px) { .nav-links > a:not(.button) { display:none; } .hero { grid-template-columns:1fr; gap:42px; padding-top:72px; } .monitor { min-height:auto; } .section-head { display:grid; align-items:start; } .steps { grid-template-columns:1fr; } .step { min-height:220px; } .cta { grid-template-columns:1fr; } .cta-action { justify-content:flex-start; } .ops-content { grid-template-columns:1fr; } }
+    @media (max-width:620px) { .shell { width:min(100% - 24px,1160px); } .nav-inner { min-height:68px; } .brand-copy small { display:none; } .nav .button { min-height:40px; padding:0 12px; font-size:.78rem; } .hero { padding:58px 0 54px; } h1 { font-size:clamp(2.75rem,15vw,4.2rem); } .monitor { padding:21px; border-radius:22px; } .monitor-grid,.trust-strip { grid-template-columns:1fr; } .trust-item { justify-content:flex-start; padding:0 18px; } .trust-item + .trust-item { border-top:1px solid var(--line); border-left:0; } .section { padding:78px 0; } .cta { padding:30px 23px; border-radius:22px; } .cta .button { width:100%; } .footer-inner { flex-direction:column; } .summary-note { display:none; } }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand"><div class="brand-mark">§</div><div><strong>DOU Leis e MPs</strong><small>Monitoramento jurídico automatizado</small></div></div>
-      <div class="pill"><span id="health-dot" class="dot"></span><span id="health-label">Verificando serviço…</span></div>
-    </header>
-    <section class="hero">
-      <div class="hero-copy"><p class="eyebrow">Diário Oficial da União</p><h1>Descubra o que mudou na legislação.</h1><p>O sistema consulta a Seção 1 do DOU, identifica Leis e Medidas Provisórias e envia novidades para o seu grupo do Telegram.</p><div class="hero-actions"><a id="telegram-button" class="telegram-button" href="https://t.me/+81PSoHU2iPcwZWRh" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">➤</span> Entrar no grupo do Telegram</a></div></div>
-      <div class="timer-card"><div><h2>Próxima verificação</h2><div id="countdown" class="timer">--:--:--</div><p id="next-check-label">Calculando o próximo ciclo…</p></div><p class="schedule">Execução real: <strong id="schedule">__SCHEDULE__</strong></p></div>
+  <header class="nav">
+    <div class="shell nav-inner">
+      <a class="brand" href="#inicio" aria-label="Radar do DOU — início"><span class="brand-mark">§</span><span class="brand-copy"><strong>Radar do DOU</strong><small>Leis e MPs em tempo real</small></span></a>
+      <nav class="nav-links" aria-label="Navegação principal"><a href="#como-funciona">Como funciona</a><a href="#status">Status</a><a class="button small" href="https://t.me/+81PSoHU2iPcwZWRh" target="_blank" rel="noopener noreferrer">Entrar no Telegram</a></nav>
+    </div>
+  </header>
+  <main id="inicio">
+    <section class="shell hero">
+      <div>
+        <p class="eyebrow">Monitoramento do Diário Oficial da União</p>
+        <h1>Novas leis.<br><span class="accent">Sem ruído.</span></h1>
+        <p class="lead">Receba no Telegram as Leis e Medidas Provisórias encontradas na Seção 1 do DOU — com título e acesso direto ao texto oficial.</p>
+        <div class="hero-actions">
+          <a id="telegram-button" class="button" href="https://t.me/+81PSoHU2iPcwZWRh" target="_blank" rel="noopener noreferrer"><svg class="telegram-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 3.4 18.4 19c-.24 1.1-.88 1.37-1.78.85l-4.88-3.6-2.36 2.27c-.26.26-.48.48-.98.48l.35-4.97 9.04-8.17c.4-.35-.08-.55-.61-.2L6 12.7l-4.8-1.5c-1.04-.33-1.06-1.04.22-1.54L20.2 2.43c.87-.32 1.63.2 1.4.97Z"/></svg>Entrar no grupo gratuito</a>
+          <a class="button secondary" href="#como-funciona">Conhecer o projeto</a>
+        </div>
+        <p class="microcopy"><span class="microcopy-dot"></span> Consulta automática todos os dias às 10:00</p>
+      </div>
+      <aside id="status" class="monitor" aria-label="Status do monitoramento">
+        <div class="monitor-top"><span class="monitor-label">Próxima consulta</span><span class="live-pill"><span id="health-dot" class="live-dot"></span><span id="health-label">Verificando</span></span></div>
+        <h2>Tempo restante</h2><div id="countdown" class="timer">--:--:--</div><p id="next-check-label" class="next-label">Calculando o próximo ciclo…</p>
+        <div class="monitor-grid">
+          <div class="monitor-item"><span>Agendamento</span><strong id="schedule">Diariamente às 10:00</strong></div>
+          <div class="monitor-item"><span>Fuso horário</span><strong id="timezone">America/Sao_Paulo</strong></div>
+          <div class="monitor-item"><span>Fonte</span><strong>DOU · Seção 1</strong></div>
+          <div class="monitor-item"><span>Telegram</span><strong id="telegram">Verificando…</strong></div>
+        </div>
+      </aside>
     </section>
-    <section class="metrics" aria-label="Status do sistema">
-      <div class="metric"><div class="metric-label">Agendamento</div><div id="interval" class="metric-value">--</div></div>
-      <div class="metric"><div class="metric-label">Fuso horário</div><div id="timezone" class="metric-value">--</div></div>
-      <div class="metric"><div class="metric-label">Telegram</div><div id="telegram" class="metric-value">Verificando…</div></div>
+    <section class="trust-strip shell" aria-label="Características do serviço">
+      <div class="trust-item"><span class="trust-icon">✓</span> Fonte oficial do Governo Federal</div>
+      <div class="trust-item"><span class="trust-icon">↗</span> Link direto para cada publicação</div>
+      <div class="trust-item"><span class="trust-icon">◎</span> Atualização diária automatizada</div>
     </section>
-    <main class="content-grid">
-      <section class="card"><div class="card-header"><div><h2>Executar coleta manual</h2><p class="card-description">Use somente quando quiser consultar uma data imediatamente.</p></div></div><div class="field"><label for="date">Data da publicação</label><input id="date" type="date"></div><div class="field"><label for="scrape-key">Chave de scraping</label><input id="scrape-key" type="password" autocomplete="off" placeholder="SCRAPE_API_KEY"></div><div class="actions"><button id="scrape-button" onclick="scrape()">Executar scraper</button><span id="scrape-status" class="status" role="status"></span></div><p class="hint">A coleta automática já está ativa. Esta ação é apenas um atalho manual e não substitui o agendamento.</p></section>
-      <section class="card"><div class="card-header"><div><h2>Publicações salvas</h2><p class="card-description">Consulte os itens coletados para uma data específica.</p></div><button class="secondary" onclick="loadItems()">Atualizar</button></div><div class="field"><label for="read-key">Chave de leitura</label><input id="read-key" type="password" autocomplete="off" placeholder="READ_API_KEY"></div><div id="items" class="publication-list"><div class="empty">Informe a chave de leitura para carregar as publicações.</div></div></section>
-    </main>
-    <footer class="footer">Dados consultados na fonte oficial do DOU · O sistema não substitui a leitura do ato oficial.</footer>
-  </div>
-  <script>
-    const state = { scheduleHour: 10, scheduleMinute: 0, nextCheck: null };
-    const $ = (selector) => document.querySelector(selector);
-    const pad = (value) => String(value).padStart(2, '0');
-    function localDate() { const now = new Date(); return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`; }
-    function setStatus(message, kind = '') { const element = $('#scrape-status'); element.textContent = message; element.className = `status ${kind}`; }
-    function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char])); }
-    function safeSourceUrl(value) { try { const url = new URL(value); const officialHost = ['in.gov.br', 'www.in.gov.br'].includes(url.hostname.toLowerCase().replace(/\.$/, '')); return url.protocol === 'https:' && officialHost ? url.href : '#'; } catch (_) { return '#'; } }
-    function safeTelegramUrl(value) { try { const url = new URL(value); const telegramHost = ['t.me','www.t.me','telegram.me','www.telegram.me'].includes(url.hostname.toLowerCase().replace(/\.$/, '')); return url.protocol === 'https:' && telegramHost && url.pathname !== '/' ? url.href : ''; } catch (_) { return ''; } }
-    function scheduleNextCheck() { const now = new Date(); const next = new Date(now); next.setHours(state.scheduleHour, state.scheduleMinute, 0, 0); if (next <= now) next.setDate(next.getDate() + 1); state.nextCheck = next; updateCountdown(); }
-    function updateCountdown() { if (!state.nextCheck) return; const remaining = Math.max(0, state.nextCheck.getTime()-Date.now()); const totalSeconds = Math.floor(remaining/1000); $('#countdown').textContent = `${pad(Math.floor(totalSeconds/3600))}:${pad(Math.floor((totalSeconds%3600)/60))}:${pad(totalSeconds%60)}`; $('#next-check-label').textContent = `Estimativa para ${state.nextCheck.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; if (remaining === 0) scheduleNextCheck(); }
-    async function loadHealth() { try { const response = await fetch('/api/health'); const health = await response.json(); state.scheduleHour = Number.isInteger(health.schedule_hour) ? health.schedule_hour : 10; state.scheduleMinute = Number.isInteger(health.schedule_minute) ? health.schedule_minute : 0; scheduleNextCheck(); $('#interval').textContent = health.schedule_label || `Diariamente às ${pad(state.scheduleHour)}:${pad(state.scheduleMinute)}`; $('#schedule').textContent = health.schedule_label || $('#schedule').textContent; $('#timezone').textContent = health.timezone || '—'; $('#telegram').textContent = health.telegram_configured ? 'Conectado' : 'Não configurado'; $('#health-dot').classList.toggle('ok', response.ok); $('#health-label').textContent = response.ok ? 'Serviço online' : 'Serviço indisponível'; } catch (error) { $('#health-label').textContent = 'Não foi possível verificar'; $('#telegram').textContent = 'Indisponível'; } }
-    async function loadTelegramLink() { try { const response = await fetch('/api/telegram-link'); const payload = await response.json(); const url = safeTelegramUrl(payload.url); if (!response.ok || !url) return; const button = $('#telegram-button'); button.href = url; button.hidden = false; } catch (_) {} }
-    async function loadItems() { const readKey = $('#read-key').value.trim(); const date = $('#date').value; const list = $('#items'); if (!readKey) { list.innerHTML = '<div class="empty">Informe a chave de leitura para carregar as publicações.</div>'; return; } list.innerHTML = '<div class="empty">Carregando publicações…</div>'; try { const response = await fetch(`/api/laws?date=${encodeURIComponent(date)}`, {headers:{'X-API-Key':readKey}}); const payload = await response.json(); if (!response.ok) throw new Error(payload.detail || 'Não foi possível carregar os dados.'); list.innerHTML = payload.length ? payload.map((item) => `<article class="publication"><a href="${escapeHtml(safeSourceUrl(item.source_url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a><div class="meta">${escapeHtml(item.kind)} · ${escapeHtml(item.published_date)}</div></article>`).join('') : '<div class="empty">Nenhuma publicação salva para esta data.</div>'; } catch (error) { list.innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`; } }
-    async function scrape() { const key = $('#scrape-key').value.trim(); const button = $('#scrape-button'); if (!key) { setStatus('Informe a chave de scraping.', 'error'); return; } button.disabled = true; setStatus('Consultando o DOU…'); try { const response = await fetch('/api/scrape', {method:'POST',headers:{'Content-Type':'application/json','X-API-Key':key},body:JSON.stringify({date:$('#date').value})}); const payload = await response.json(); if (!response.ok) throw new Error(payload.detail || 'Falha na coleta.'); setStatus(`OK · ${payload.found} encontrada(s) · ${payload.new} nova(s) · ${payload.telegram_sent} enviada(s)`, 'ok'); await loadItems(); } catch (error) { setStatus(error.message, 'error'); } finally { button.disabled = false; } }
-    $('#date').value = localDate(); loadHealth(); loadTelegramLink(); setInterval(updateCountdown, 1000);
-  </script>
+    <section id="como-funciona" class="section shell">
+      <div class="section-head"><div><p class="section-kicker">Como funciona</p><h2>Da publicação oficial<br>para o seu Telegram.</h2></div><p class="section-intro">Uma rotina simples e transparente para você acompanhar mudanças legislativas sem precisar pesquisar manualmente no DOU todos os dias.</p></div>
+      <div class="steps">
+        <article class="step" data-step="1"><span class="step-number">01</span><h3>Consulta o DOU</h3><p>O sistema acessa a edição diária da Seção 1 e procura atos publicados na fonte oficial.</p></article>
+        <article class="step" data-step="2"><span class="step-number">02</span><h3>Filtra o que importa</h3><p>Leis e Medidas Provisórias são identificadas, organizadas e protegidas contra envios duplicados.</p></article>
+        <article class="step" data-step="3"><span class="step-number">03</span><h3>Publica no grupo</h3><p>Cada novidade chega ao Telegram com título e link para leitura integral no portal do DOU.</p></article>
+      </div>
+    </section>
+    <section class="shell">
+      <div class="cta"><div><p class="section-kicker">Acompanhe sem esforço</p><h2>Informação legislativa direto no seu dia.</h2><p>Entre no grupo e receba as próximas Leis e Medidas Provisórias assim que a verificação diária for concluída.</p></div><div class="cta-action"><a class="button" href="https://t.me/+81PSoHU2iPcwZWRh" target="_blank" rel="noopener noreferrer"><svg class="telegram-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21.6 3.4 18.4 19c-.24 1.1-.88 1.37-1.78.85l-4.88-3.6-2.36 2.27c-.26.26-.48.48-.98.48l.35-4.97 9.04-8.17c.4-.35-.08-.55-.61-.2L6 12.7l-4.8-1.5c-1.04-.33-1.06-1.04.22-1.54L20.2 2.43c.87-.32 1.63.2 1.4.97Z"/></svg>Acessar o grupo</a></div></div>
+    </section>
+    <section class="shell ops-wrap">
+      <details class="ops" id="operacao">
+        <summary><span><span class="summary-title">Área de operação</span><span class="summary-note"> · acesso administrativo para coleta e consulta</span></span><span class="summary-arrow">⌄</span></summary>
+        <div class="ops-content">
+          <section class="ops-card"><h3>Executar coleta manual</h3><p>Use somente para consultar uma data imediatamente.</p><div class="field"><label for="date">Data da publicação</label><input id="date" type="date"></div><div class="field"><label for="scrape-key">Chave de scraping</label><input id="scrape-key" type="password" autocomplete="off" placeholder="SCRAPE_API_KEY"></div><div class="ops-actions"><button id="scrape-button" onclick="scrape()">Executar scraper</button><span id="scrape-status" class="status-message" role="status"></span></div></section>
+          <section class="ops-card"><h3>Publicações salvas</h3><p>Consulte os itens coletados para a data selecionada.</p><div class="field"><label for="read-key">Chave de leitura</label><input id="read-key" type="password" autocomplete="off" placeholder="READ_API_KEY"></div><div class="ops-actions"><button onclick="loadItems()">Carregar publicações</button></div><div id="items" class="publication-list"><div class="empty">Informe a chave de leitura para carregar as publicações.</div></div></section>
+        </div>
+      </details>
+    </section>
+  </main>
+  <footer class="shell"><div class="footer-inner"><span>Radar do DOU · Monitoramento automatizado</span><span>Os dados não substituem a leitura do ato oficial.</span></div></footer>
+  <script src="/app.js" defer></script>
 </body>
 </html>

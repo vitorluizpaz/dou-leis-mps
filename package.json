@@ -1,0 +1,11 @@
+{
+  "name": "radar-dou-leis-mps-worker",
+  "private": true,
+  "scripts": {
+    "dev:worker": "wrangler dev",
+    "deploy:worker": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  }
+}
