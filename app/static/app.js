@@ -72,7 +72,8 @@ async function loadHealth() {
     state.scheduleHour = Number.isInteger(health.schedule_hour) ? health.schedule_hour : 10;
     state.scheduleMinute = Number.isInteger(health.schedule_minute) ? health.schedule_minute : 0;
     scheduleNextCheck();
-    $("#schedule").textContent = health.schedule_label || `Diariamente às ${pad(state.scheduleHour)}:${pad(state.scheduleMinute)}`;
+    const scheduleLabel = health.schedule_label || `Diariamente às ${pad(state.scheduleHour)}:${pad(state.scheduleMinute)}`;
+    $("#schedule").textContent = scheduleLabel.replace(/\s*\(America\/Sao_Paulo\)\s*/gi, "").trim();
     $("#timezone").textContent = health.timezone || "—";
     $("#telegram").textContent = health.telegram_configured ? "Conectado" : "Não configurado";
     $("#health-label").textContent = response.ok ? "Serviço online" : "Indisponível";
@@ -90,7 +91,11 @@ async function loadTelegramLink() {
     const response = await fetch("/api/telegram-link");
     const payload = await response.json();
     const url = safeTelegramUrl(payload.url);
-    if (response.ok && url) $("#telegram-button").href = url;
+    if (response.ok && url) {
+      document.querySelectorAll(".telegram-link").forEach((link) => {
+        link.href = url;
+      });
+    }
   } catch (_) {
     // The invitation link is already present in the static page.
   }
