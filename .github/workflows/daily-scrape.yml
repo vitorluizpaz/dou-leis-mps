@@ -2,8 +2,8 @@ name: Scrape DOU daily
 
 on:
   schedule:
-    # 08:00 America/Sao_Paulo = 11:00 UTC.
-    - cron: "0 11 * * *"
+    # 09:55 America/Sao_Paulo = 12:55 UTC.
+    - cron: "55 12 * * *"
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,8 @@ jobs:
           SCRAPE_API_KEY: ${{ secrets.SCRAPE_API_KEY }}
         run: |
           curl --fail-with-body --show-error --silent \
-            --retry 3 --retry-all-errors \
+            --connect-timeout 30 --max-time 300 \
+            --retry 4 --retry-delay 15 --retry-all-errors \
             -X POST "$API_URL/api/scrape" \
             -H "X-API-Key: $SCRAPE_API_KEY" \
             -H "Content-Type: application/json" \
