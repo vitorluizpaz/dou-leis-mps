@@ -16,7 +16,7 @@ A mensagem enviada ao Telegram contém o título da publicação e um link **Cli
 ## Arquitetura
 
 ```text
-GitHub Actions (diariamente às 08:00)
+GitHub Actions (diariamente às 09:55)
              |
              v
       POST /api/scrape
@@ -93,6 +93,7 @@ Copie `.env.example` e preencha os valores no ambiente local ou no Render. Nunca
 | `SCRAPE_API_KEY` | Sim | Autoriza execuções em `/api/scrape`. Deve ser diferente da READ key. |
 | `TELEGRAM_BOT_TOKEN` | Para publicar | Token criado pelo @BotFather. |
 | `TELEGRAM_CHAT_ID` | Para publicar | ID do canal/grupo, por exemplo `-100...`, ou `@username` em canal público. |
+| `TELEGRAM_PUBLIC_URL` | Não | Link público ou convite `https://t.me/...` usado no botão da landing page. Se vazio, o sistema tenta obter o link pelo Bot API. |
 | `SCRAPE_INTERVAL_MINUTES` | Compatibilidade | Mantida como `1440` para indicar um ciclo diário. O horário fixo é definido pelas duas variáveis abaixo. |
 | `SCRAPE_HOUR` | Não | Hora da coleta no fuso configurado. Padrão: `8`. |
 | `SCRAPE_MINUTE` | Não | Minuto da coleta. Padrão: `0`. |
@@ -127,6 +128,10 @@ Na interface web, informe a `READ_API_KEY` para consultar publicações e a `SCR
 
 Para um grupo privado, o ID normalmente começa com `-100`. Para obter o ID, envie uma mensagem no grupo e consulte `getUpdates` usando o token do bot. Em produção, prefira cadastrar o valor diretamente nos secrets do Render e não em arquivos locais.
 
+A landing page tenta descobrir o endereço do grupo usando `getChat`, sem expor o token do bot ao navegador. O deploy atual usa `TELEGRAM_PUBLIC_URL=https://t.me/+81PSoHU2iPcwZWRh` para garantir que o botão “Entrar no grupo do Telegram” sempre apareça.
+
+Para que novos integrantes vejam mensagens antigas, abra as informações do grupo no Telegram e acesse **Editar > Tipo do grupo > Histórico do chat para novos membros > Visível**. Essa opção pertence ao grupo e não pode ser alterada pela Bot API. Em canais, o histórico normalmente já fica disponível para novos inscritos.
+
 ## API
 
 As rotas protegidas recebem a chave no cabeçalho `X-API-Key`. A chave nunca deve ser enviada na URL, pois URLs podem aparecer em históricos, logs e ferramentas de monitoramento.
@@ -141,7 +146,7 @@ Endpoint público de saúde e configuração não sensível:
   "scrape_interval_minutes": 1440,
   "schedule_hour": 8,
   "schedule_minute": 0,
-  "schedule_label": "diariamente às 08:00 (America/Sao_Paulo)",
+  "schedule_label": "diariamente às 09:55 (America/Sao_Paulo)",
   "timezone": "America/Sao_Paulo",
   "auth_configured": true,
   "telegram_configured": true
@@ -181,9 +186,9 @@ As respostas da API usam `Cache-Control: no-store` para evitar que dados protegi
 
 ## Agendamento em produção
 
-O workflow `.github/workflows/daily-scrape.yml` é executado uma vez por dia às 08:00 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `0 11 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
+O workflow `.github/workflows/daily-scrape.yml` é executado uma vez por dia às 09:55 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `55 12 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
 
-O serviço também agenda uma execução diária às 08:00 usando `CronTrigger` no fuso `America/Sao_Paulo`. Os dois mecanismos possuem a mesma finalidade; o workflow do GitHub funciona como despertador confiável para o plano gratuito do Render.
+O serviço também agenda uma execução diária às 09:55 usando `CronTrigger` no fuso `America/Sao_Paulo`. Os dois mecanismos possuem a mesma finalidade; o workflow do GitHub funciona como despertador externo para o plano gratuito do Render.
 
 No GitHub, configure estes secrets no repositório:
 

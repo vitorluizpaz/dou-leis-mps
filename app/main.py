@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 from .config import get_settings
 from .db import init_db, list_publications, list_runs
 from .scraper import DouScraper
-from .telegram import publish_pending_telegram
+from .telegram import TelegramPublisher, publish_pending_telegram
 
 settings = get_settings()
 scheduler = BackgroundScheduler(timezone=ZoneInfo(settings.timezone))
@@ -93,6 +93,11 @@ def health() -> dict:
             "timezone": settings.timezone,
             "auth_configured": bool(settings.read_api_key and settings.scrape_api_key),
             "telegram_configured": bool(settings.telegram_bot_token and settings.telegram_chat_id)}
+
+
+@app.get("/api/telegram-link")
+def telegram_link() -> dict:
+    return {"url": TelegramPublisher().access_url()}
 
 
 def require_api_key(kind: str):

@@ -19,6 +19,19 @@ class FakeSession:
         return FakeResponse()
 
 
+class FakeChatResponse:
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return {"ok": True, "result": {"invite_link": "https://t.me/+convite-seguro"}}
+
+
+class FakeChatSession:
+    def get(self, url, params, timeout):
+        return FakeChatResponse()
+
+
 def test_telegram_publisher_sends_title_and_link():
     settings = get_settings()
     old_token, old_chat = settings.telegram_bot_token, settings.telegram_chat_id
@@ -55,3 +68,31 @@ def test_telegram_publisher_rejects_non_official_link():
             raise AssertionError("Link externo deveria ser rejeitado")
     finally:
         settings.telegram_bot_token, settings.telegram_chat_id = old_token, old_chat
+
+
+def test_telegram_publisher_returns_safe_group_invite():
+    settings = get_settings()
+    old_token, old_chat, old_url = (
+        settings.telegram_bot_token,
+        settings.telegram_chat_id,
+        settings.telegram_public_url,
+    )
+    settings.telegram_bot_token = "bot-token"
+    settings.telegram_chat_id = "-100123"
+    settings.telegram_public_url = ""
+    try:
+        assert TelegramPublisher(FakeChatSession()).access_url() == "https://t.me/+convite-seguro"
+    finally:
+        settings.telegram_bot_token = old_token
+        settings.telegram_chat_id = old_chat
+        settings.telegram_public_url = old_url
+
+
+def test_telegram_publisher_rejects_unsafe_configured_url():
+    settings = get_settings()
+    old_url = settings.telegram_public_url
+    settings.telegram_public_url = "https://evil.example/convite"
+    try:
+        assert TelegramPublisher(FakeChatSession()).access_url() is None
+    finally:
+        settings.telegram_public_url = old_url

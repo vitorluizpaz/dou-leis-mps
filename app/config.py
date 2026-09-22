@@ -10,13 +10,14 @@ class Settings(BaseSettings):
     allowed_hosts: str = "dou-leis-mps.onrender.com,localhost,127.0.0.1"
     timezone: str = "America/Sao_Paulo"
     scrape_interval_minutes: int = 1440
-    scrape_hour: int = 8
-    scrape_minute: int = 0
+    scrape_hour: int = 9
+    scrape_minute: int = 55
     enable_docs: bool = False
     read_api_key: str = ""
     scrape_api_key: str = ""
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
+    telegram_public_url: str = ""
     request_timeout: int = 30
     user_agent: str = "DOU-LeisMPs/0.1"
 
