@@ -21,9 +21,9 @@ services:
       - key: SCRAPE_INTERVAL_MINUTES
         value: "1440"
       - key: SCRAPE_HOUR
-        value: "9"
+        value: "10"
       - key: SCRAPE_MINUTE
-        value: "55"
+        value: "0"
       - key: ALLOWED_HOSTS
         value: dou-leis-mps.onrender.com,localhost,127.0.0.1
       - key: ENABLE_DOCS

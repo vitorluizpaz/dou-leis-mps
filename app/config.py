@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     allowed_hosts: str = "dou-leis-mps.onrender.com,localhost,127.0.0.1"
     timezone: str = "America/Sao_Paulo"
     scrape_interval_minutes: int = 1440
-    scrape_hour: int = 9
-    scrape_minute: int = 55
+    scrape_hour: int = 10
+    scrape_minute: int = 0
     enable_docs: bool = False
     read_api_key: str = ""
     scrape_api_key: str = ""

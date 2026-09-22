@@ -2,8 +2,8 @@ name: Scrape DOU daily
 
 on:
   schedule:
-    # 09:55 America/Sao_Paulo = 12:55 UTC.
-    - cron: "55 12 * * *"
+    # 10:00 America/Sao_Paulo = 13:00 UTC.
+    - cron: "0 13 * * *"
   workflow_dispatch:
 
 jobs:

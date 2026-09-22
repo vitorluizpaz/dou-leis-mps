@@ -16,7 +16,7 @@ A mensagem enviada ao Telegram contém o título da publicação e um link **Cli
 ## Arquitetura
 
 ```text
-GitHub Actions (diariamente às 09:55)
+GitHub Actions (diariamente às 10:00)
              |
              v
       POST /api/scrape
@@ -146,7 +146,7 @@ Endpoint público de saúde e configuração não sensível:
   "scrape_interval_minutes": 1440,
   "schedule_hour": 8,
   "schedule_minute": 0,
-  "schedule_label": "diariamente às 09:55 (America/Sao_Paulo)",
+  "schedule_label": "diariamente às 10:00 (America/Sao_Paulo)",
   "timezone": "America/Sao_Paulo",
   "auth_configured": true,
   "telegram_configured": true
@@ -186,9 +186,9 @@ As respostas da API usam `Cache-Control: no-store` para evitar que dados protegi
 
 ## Agendamento em produção
 
-O workflow `.github/workflows/daily-scrape.yml` é executado uma vez por dia às 09:55 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `55 12 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
+O workflow `.github/workflows/daily-scrape.yml` é executado uma vez por dia às 10:00 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `0 13 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
 
-O serviço também agenda uma execução diária às 09:55 usando `CronTrigger` no fuso `America/Sao_Paulo`. Os dois mecanismos possuem a mesma finalidade; o workflow do GitHub funciona como despertador externo para o plano gratuito do Render.
+O serviço também agenda uma execução diária às 10:00 usando `CronTrigger` no fuso `America/Sao_Paulo`. Os dois mecanismos possuem a mesma finalidade; o workflow do GitHub funciona como despertador externo para o plano gratuito do Render.
 
 No GitHub, configure estes secrets no repositório:
 
