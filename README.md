@@ -142,7 +142,7 @@ Endpoint público de saúde e configuração não sensível:
 {
   "status": "ok",
   "scrape_interval_minutes": 1440,
-  "schedule_hour": 8,
+  "schedule_hour": 10,
   "schedule_minute": 0,
   "schedule_label": "diariamente às 10:00 (America/Sao_Paulo)",
   "timezone": "America/Sao_Paulo",
@@ -150,6 +150,8 @@ Endpoint público de saúde e configuração não sensível:
   "telegram_configured": true
 }
 ```
+
+`telegram_configured: true` confirma apenas que token e chat ID foram cadastrados; não garante permissão de envio no grupo.
 
 ### `GET /api/laws`
 
@@ -179,6 +181,10 @@ A resposta informa quantidade encontrada, quantidade nova e quantidade enviada a
 ### `GET /api/runs`
 
 Lista as últimas execuções do scraper. Exige `X-API-Key: READ_API_KEY`. O parâmetro `limit` aceita valores entre 1 e 100.
+
+### `GET /api/telegram-diagnostics`
+
+Exige `X-API-Key: SCRAPE_API_KEY`. Consulta o tipo do chat configurado, a situação do bot (`member`, `restricted` ou `administrator`) e as permissões de envio, sem devolver token, ID ou título do grupo. Use-o quando o Telegram responder que o bot não tem direito de publicar.
 
 As respostas da API usam `Cache-Control: no-store` para evitar que dados protegidos sejam armazenados por caches intermediários.
 

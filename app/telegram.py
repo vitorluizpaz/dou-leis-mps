@@ -66,6 +66,44 @@ class TelegramPublisher:
             raise RuntimeError(f"Telegram recusou a mensagem (HTTP {response.status_code}): {description}")
         return str(payload["result"]["message_id"])
 
+    def _bot_get(self, method: str, params: dict | None = None) -> dict:
+        if not self.configured:
+            raise RuntimeError("Telegram não configurado")
+        try:
+            response = self.session.get(
+                f"https://api.telegram.org/bot{self.settings.telegram_bot_token}/{method}",
+                params=params,
+                timeout=self.settings.request_timeout,
+            )
+        except requests.RequestException as exc:
+            raise RuntimeError(f"Falha de conexão com Telegram ({type(exc).__name__})") from None
+        try:
+            payload = response.json()
+        except ValueError:
+            raise RuntimeError(f"Telegram respondeu HTTP {response.status_code} sem JSON válido") from None
+        if response.status_code >= 400 or not payload.get("ok"):
+            description = str(payload.get("description", "Telegram recusou a consulta"))
+            description = description.replace(self.settings.telegram_bot_token, "[token oculto]")
+            raise RuntimeError(f"Consulta ao Telegram falhou (HTTP {response.status_code}): {description}")
+        return payload["result"]
+
+    def diagnose(self) -> dict:
+        """Return only non-secret rights for the configured destination chat."""
+        bot = self._bot_get("getMe")
+        chat = self._bot_get("getChat", {"chat_id": self.settings.telegram_chat_id})
+        member = self._bot_get("getChatMember", {
+            "chat_id": self.settings.telegram_chat_id,
+            "user_id": bot["id"],
+        })
+        permissions = chat.get("permissions") or {}
+        return {
+            "chat_type": chat.get("type"),
+            "bot_status": member.get("status"),
+            "members_can_send_messages": permissions.get("can_send_messages"),
+            "bot_can_send_messages": member.get("can_send_messages"),
+            "bot_can_post_messages": member.get("can_post_messages"),
+        }
+
     def access_url(self) -> str | None:
         """Return a safe public/invite URL without exposing the bot token."""
         configured_url = self.settings.telegram_public_url.strip()

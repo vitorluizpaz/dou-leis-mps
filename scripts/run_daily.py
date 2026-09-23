@@ -72,7 +72,20 @@ def main() -> None:
             headers={**headers, "Content-Type": "text/html; charset=utf-8"},
             timeout=(30, 180),
         )
-        report(response)
+        try:
+            report(response)
+        except (requests.RequestException, ValueError, KeyError):
+            try:
+                diagnostics = session.get(
+                    f"{api_url}/api/telegram-diagnostics",
+                    headers=headers,
+                    timeout=(15, 30),
+                )
+                if diagnostics.ok:
+                    print(f"Permissões do bot: {diagnostics.json()}", file=sys.stderr)
+            except (requests.RequestException, ValueError):
+                pass
+            raise
 
 
 if __name__ == "__main__":

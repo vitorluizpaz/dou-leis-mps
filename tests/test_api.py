@@ -46,3 +46,13 @@ def test_scrape_html_requires_key_and_valid_edition(monkeypatch):
         response = client.post(endpoint, content=html, headers=headers)
         assert response.status_code == 200
         assert called == [("2026-09-23", html)]
+
+
+def test_telegram_diagnostics_is_protected(monkeypatch):
+    settings.scrape_api_key = "scrape-key"
+    monkeypatch.setattr(main_module.TelegramPublisher, "diagnose", lambda self: {"bot_status": "member"})
+    with TestClient(app, base_url="http://localhost") as client:
+        assert client.get("/api/telegram-diagnostics").status_code == 401
+        response = client.get("/api/telegram-diagnostics", headers={"X-API-Key": "scrape-key"})
+        assert response.status_code == 200
+        assert response.json() == {"bot_status": "member"}

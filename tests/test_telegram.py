@@ -46,6 +46,28 @@ class FakeChatSession:
         return FakeChatResponse()
 
 
+class DiagnosticResponse:
+    status_code = 200
+
+    def __init__(self, result):
+        self.result = result
+
+    def json(self):
+        return {"ok": True, "result": self.result}
+
+
+class DiagnosticSession:
+    def get(self, url, params, timeout):
+        if url.endswith("/getMe"):
+            return DiagnosticResponse({"id": 123})
+        if url.endswith("/getChat"):
+            return DiagnosticResponse({"type": "supergroup", "permissions": {"can_send_messages": False}})
+        if url.endswith("/getChatMember"):
+            assert params["user_id"] == 123
+            return DiagnosticResponse({"status": "member"})
+        raise AssertionError("Método inesperado")
+
+
 def test_telegram_publisher_sends_title_and_link():
     settings = get_settings()
     old_token, old_chat = settings.telegram_bot_token, settings.telegram_chat_id
@@ -130,3 +152,19 @@ def test_telegram_publisher_rejects_unsafe_configured_url():
         assert TelegramPublisher(FakeChatSession()).access_url() is None
     finally:
         settings.telegram_public_url = old_url
+
+
+def test_telegram_diagnostics_reports_only_safe_permission_state():
+    settings = get_settings()
+    old_token, old_chat = settings.telegram_bot_token, settings.telegram_chat_id
+    settings.telegram_bot_token = "secret-bot-token"
+    settings.telegram_chat_id = "-100123"
+    try:
+        result = TelegramPublisher(DiagnosticSession()).diagnose()
+        assert result["chat_type"] == "supergroup"
+        assert result["bot_status"] == "member"
+        assert result["members_can_send_messages"] is False
+        assert "secret-bot-token" not in str(result)
+        assert "-100123" not in str(result)
+    finally:
+        settings.telegram_bot_token, settings.telegram_chat_id = old_token, old_chat

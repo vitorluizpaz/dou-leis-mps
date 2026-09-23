@@ -110,6 +110,11 @@ def require_api_key(kind: str):
     return dependency
 
 
+@app.get("/api/telegram-diagnostics")
+def telegram_diagnostics(_auth: None = Depends(require_api_key("scrape"))) -> dict:
+    return TelegramPublisher().diagnose()
+
+
 @app.get("/api/laws")
 def laws(date: Date | None = Query(default=None), limit: int = Query(default=100, ge=1, le=500),
          _auth: None = Depends(require_api_key("read"))) -> list[dict]:
