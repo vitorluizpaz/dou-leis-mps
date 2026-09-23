@@ -47,6 +47,11 @@ def init_db() -> None:
     metadata.create_all(engine)
 
 
+def database_ready() -> bool:
+    with engine.connect() as connection:
+        return connection.execute(text("SELECT 1")).scalar_one() == 1
+
+
 @contextmanager
 def connect():
     with engine.begin() as connection:

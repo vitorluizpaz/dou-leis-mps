@@ -12,7 +12,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from zoneinfo import ZoneInfo
 
 from .config import get_settings
-from .db import init_db, list_publications, list_runs
+from .db import database_ready, init_db, list_publications, list_runs
 from .scraper import DouScraper
 from .telegram import TelegramPublisher, publish_pending_telegram
 
@@ -87,6 +87,11 @@ async def add_security_headers(request, call_next):
 
 @app.get("/api/health")
 def health() -> dict:
+    try:
+        if not database_ready():
+            raise RuntimeError("Database readiness check failed")
+    except Exception:
+        raise HTTPException(status_code=503, detail="Banco de dados indisponível") from None
     return {"status": "ok", "scrape_interval_minutes": settings.scrape_interval_minutes,
             "schedule_hour": settings.scrape_hour, "schedule_minute": settings.scrape_minute,
             "schedule_label": schedule_label(),

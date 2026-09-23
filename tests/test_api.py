@@ -56,3 +56,11 @@ def test_telegram_diagnostics_is_protected(monkeypatch):
         response = client.get("/api/telegram-diagnostics", headers={"X-API-Key": "scrape-key"})
         assert response.status_code == 200
         assert response.json() == {"bot_status": "member"}
+
+
+def test_health_reports_database_unavailable(monkeypatch):
+    monkeypatch.setattr(main_module, "database_ready", lambda: False)
+    with TestClient(app, base_url="http://localhost") as client:
+        response = client.get("/api/health")
+        assert response.status_code == 503
+        assert response.json() == {"detail": "Banco de dados indisponível"}

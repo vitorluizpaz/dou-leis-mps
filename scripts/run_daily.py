@@ -43,6 +43,28 @@ def report(response: requests.Response) -> None:
     )
 
 
+def ensure_telegram_ready(session: requests.Session, api_url: str, headers: dict) -> None:
+    response = session.get(
+        f"{api_url}/api/telegram-diagnostics",
+        headers=headers,
+        timeout=(15, 30),
+    )
+    response.raise_for_status()
+    rights = response.json()
+    status = rights.get("bot_status")
+    chat_type = rights.get("chat_type")
+    if status in {"creator", "administrator"}:
+        allowed = chat_type != "channel" or rights.get("bot_can_post_messages") is True
+    elif status == "restricted":
+        allowed = rights.get("bot_can_send_messages") is True
+    elif status == "member":
+        allowed = chat_type != "channel" and rights.get("members_can_send_messages") is not False
+    else:
+        allowed = False
+    if not allowed:
+        raise RuntimeError(f"Bot sem permissão para publicar no Telegram: {rights}")
+
+
 def main() -> None:
     api_url = os.environ["API_URL"].rstrip("/")
     key = os.environ["SCRAPE_API_KEY"]
@@ -60,9 +82,11 @@ def main() -> None:
                 timeout=(30, 180),
             )
             report(response)
-            return
         except (requests.RequestException, ValueError, KeyError) as exc:
             print(f"Coleta direta falhou ({type(exc).__name__}); tentando via runner.", file=sys.stderr)
+        else:
+            ensure_telegram_ready(session, api_url, headers)
+            return
 
         html = fetch_official_html(session, target_date)
         response = session.post(
@@ -74,6 +98,7 @@ def main() -> None:
         )
         try:
             report(response)
+            ensure_telegram_ready(session, api_url, headers)
         except (requests.RequestException, ValueError, KeyError):
             try:
                 diagnostics = session.get(

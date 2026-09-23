@@ -29,7 +29,7 @@ FastAPI → PostgreSQL (publicações e envios) → Telegram Bot API
        └→ GET /api/laws (consulta autenticada)
 ```
 
-O Worker acorda o Render antes do agendamento interno; o GitHub Actions faz as tentativas de reserva caso o horário principal não funcione.
+O Worker acorda o Render antes do agendamento interno; o GitHub Actions faz as tentativas de reserva caso o horário principal não funcione. O workflow também confirma que o bot ainda tem direito de publicar, mesmo em dias sem leis novas.
 
 ## Interface web
 
@@ -151,7 +151,7 @@ Endpoint público de saúde e configuração não sensível:
 }
 ```
 
-`telegram_configured: true` confirma apenas que token e chat ID foram cadastrados; não garante permissão de envio no grupo.
+`telegram_configured: true` confirma apenas que token e chat ID foram cadastrados; não garante permissão de envio no grupo. O endpoint devolve HTTP 503 se o banco não estiver acessível, para que as rotinas de aquecimento e monitoramento detectem a indisponibilidade.
 
 ### `GET /api/laws`
 
@@ -203,7 +203,7 @@ No GitHub, configure estes secrets no repositório:
 | `API_URL` | `https://dou-leis-mps.onrender.com` |
 | `SCRAPE_API_KEY` | A mesma chave configurada no Render |
 
-Também é possível iniciar o workflow manualmente pela aba **Actions** usando **Run workflow**.
+Também é possível iniciar o workflow manualmente pela aba **Actions** usando **Run workflow**. Cada execução verifica a permissão do bot após a coleta; se ele estiver restrito ou removido, o job falha em vez de registrar um falso sucesso. O GitHub Actions usa permissões mínimas de leitura do repositório e não mantém credenciais do checkout.
 
 Para diagnosticar falhas, veja o resultado de **Actions → Scrape DOU daily** e os logs do Render. Um workflow concluído com `found: 0` não comprova que a edição não tinha leis; confira a fonte oficial se suspeitar de falha na extração.
 
@@ -217,7 +217,19 @@ O arquivo `render.yaml` descreve o serviço web e o banco PostgreSQL. O fluxo us
 4. `DATABASE_URL`, chaves da API e variáveis do Telegram cadastradas em **Environment**.
 5. Deploy automático após cada push na branch `main`.
 
-O plano gratuito pode colocar o web service em espera após inatividade. Por isso os Cron Triggers da Cloudflare devem permanecer ativos, com o GitHub Actions como reserva. O banco PostgreSQL gratuito também pode ter prazo ou limites definidos pelo provedor; monitore o painel do Render.
+O plano gratuito pode colocar o web service em espera após inatividade. Por isso os Cron Triggers da Cloudflare devem permanecer ativos, com o GitHub Actions como reserva. **O PostgreSQL gratuito do Render expira em 30 dias. O banco atual expira em 20/10/2026 e precisa ser migrado ou atualizado para um plano pago antes dessa data.** O serviço gratuito não oferece backup gerenciado.
+
+### Migrar o banco antes do vencimento
+
+Uma opção gratuita é criar um PostgreSQL no Neon. O Render continua hospedando a API; apenas `DATABASE_URL` muda. A migração deve preservar as três tabelas, inclusive `telegram_deliveries`, para evitar republicação de mensagens antigas.
+
+1. Crie um banco PostgreSQL de destino **vazio** e obtenha sua URL de conexão direta com SSL.
+2. Obtenha a **External Database URL** do banco atual no painel do Render. Não coloque nenhuma das URLs em commits, chats ou logs.
+3. Em um terminal com as duas URLs nas variáveis `SOURCE_DATABASE_URL` e `TARGET_DATABASE_URL`, execute `PYTHONPATH=. .venv/bin/python scripts/migrate_database.py`.
+4. Confira as contagens impressas para `publications`, `scrape_runs` e `telegram_deliveries`. O script verifica os registros copiados dentro de uma transação e **não altera o banco de origem**; recusa um destino que já tenha dados do bot.
+5. Atualize `DATABASE_URL` no serviço Render para a URL do novo banco, aguarde o deploy e verifique `/api/health` e uma execução manual do workflow. Mantenha o banco antigo intacto até confirmar a operação no novo banco.
+
+Não rode o script duas vezes no mesmo destino. Se a migração falhar, investigue a causa antes de mudar `DATABASE_URL` no Render. O script não deve imprimir senhas, mas as URLs devem ser geridas como segredos.
 
 ## Landing page no Cloudflare Workers
 
@@ -270,7 +282,7 @@ Boas práticas operacionais:
 
 - Não commite `.env`, tokens, chaves de API ou URLs de banco com senha.
 - Use chaves longas, aleatórias e diferentes para leitura e scraping.
-- Mantenha o `TELEGRAM_BOT_TOKEN` somente nos secrets do Render e do GitHub Actions quando necessário.
+- Mantenha o `TELEGRAM_BOT_TOKEN` somente no ambiente do Render. O GitHub Actions não precisa desse token; ele usa apenas a `SCRAPE_API_KEY` para acionar a API.
 - Se uma chave ou token for compartilhado, revogue-o e gere outro. O token do Telegram que foi compartilhado durante a configuração deve ser rotacionado no `@BotFather` antes de uma operação pública.
 - Revise periodicamente os logs do Render e as execuções do GitHub Actions.
 - O link publicado pelo bot aponta para o DOU; a fonte oficial deve ser lida antes de qualquer uso jurídico.
@@ -302,5 +314,6 @@ app/
 cloudflare/worker.js  # assets e proxy da API para o Render
 wrangler.jsonc        # configuração do Cloudflare Worker
 tests/                # testes automatizados
+scripts/migrate_database.py # migração PostgreSQL sem apagar a origem
 render.yaml           # configuração do Render
 ```
