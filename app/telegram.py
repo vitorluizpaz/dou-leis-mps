@@ -42,20 +42,28 @@ class TelegramPublisher:
             f"<b>{escape(item['title'])}</b>\n\n"
             f"<a href=\"{escape(item['source_url'], quote=True)}\">Clique para ler</a>"
         )
-        response = self.session.post(
-            f"https://api.telegram.org/bot{self.settings.telegram_bot_token}/sendMessage",
-            json={
-                "chat_id": self.settings.telegram_chat_id,
-                "text": text,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": False,
-            },
-            timeout=self.settings.request_timeout,
-        )
-        response.raise_for_status()
-        payload = response.json()
-        if not payload.get("ok"):
-            raise RuntimeError(payload.get("description", "Telegram recusou a mensagem"))
+        try:
+            response = self.session.post(
+                f"https://api.telegram.org/bot{self.settings.telegram_bot_token}/sendMessage",
+                json={
+                    "chat_id": self.settings.telegram_chat_id,
+                    "text": text,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": False,
+                },
+                timeout=self.settings.request_timeout,
+            )
+        except requests.RequestException as exc:
+            # Requests exceptions include the URL, which contains the bot token.
+            raise RuntimeError(f"Falha de conexão com Telegram ({type(exc).__name__})") from None
+        try:
+            payload = response.json()
+        except ValueError:
+            raise RuntimeError(f"Telegram respondeu HTTP {response.status_code} sem JSON válido") from None
+        if response.status_code >= 400 or not payload.get("ok"):
+            description = str(payload.get("description", "Telegram recusou a mensagem"))
+            description = description.replace(self.settings.telegram_bot_token, "[token oculto]")
+            raise RuntimeError(f"Telegram recusou a mensagem (HTTP {response.status_code}): {description}")
         return str(payload["result"]["message_id"])
 
     def access_url(self) -> str | None:

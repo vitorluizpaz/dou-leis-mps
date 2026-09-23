@@ -3,6 +3,8 @@ from app.telegram import TelegramPublisher
 
 
 class FakeResponse:
+    status_code = 200
+
     def raise_for_status(self):
         return None
 
@@ -17,6 +19,18 @@ class FakeSession:
     def post(self, url, json, timeout):
         self.calls.append((url, json, timeout))
         return FakeResponse()
+
+
+class RejectedResponse:
+    status_code = 400
+
+    def json(self):
+        return {"ok": False, "description": "Bad Request: chat not found"}
+
+
+class RejectedSession:
+    def post(self, url, json, timeout):
+        return RejectedResponse()
 
 
 class FakeChatResponse:
@@ -66,6 +80,26 @@ def test_telegram_publisher_rejects_non_official_link():
             assert "domínio oficial" in str(error)
         else:
             raise AssertionError("Link externo deveria ser rejeitado")
+    finally:
+        settings.telegram_bot_token, settings.telegram_chat_id = old_token, old_chat
+
+
+def test_telegram_error_explains_failure_without_leaking_token():
+    settings = get_settings()
+    old_token, old_chat = settings.telegram_bot_token, settings.telegram_chat_id
+    settings.telegram_bot_token = "secret-bot-token"
+    settings.telegram_chat_id = "-100123"
+    try:
+        try:
+            TelegramPublisher(RejectedSession()).send({
+                "title": "LEI Nº 1",
+                "source_url": "https://www.in.gov.br/web/dou/-/lei-n-1",
+            })
+        except RuntimeError as error:
+            assert "chat not found" in str(error)
+            assert "secret-bot-token" not in str(error)
+        else:
+            raise AssertionError("Resposta 400 deveria falhar")
     finally:
         settings.telegram_bot_token, settings.telegram_chat_id = old_token, old_chat
 
