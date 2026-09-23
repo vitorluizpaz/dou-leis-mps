@@ -92,9 +92,9 @@ class DouScraper:
             for child in value:
                 self._collect_json(child, out)
 
-    def scrape(self, target_date: date) -> list[Publication]:
+    def scrape(self, target_date: date, html: str | None = None) -> list[Publication]:
         try:
-            items = self.parse(self.fetch_html(target_date), target_date)
+            items = self.parse(html if html is not None else self.fetch_html(target_date), target_date)
             self.new_items = save_publications(items)
             save_run(target_date.isoformat(), "success", len(self.new_items))
             return items

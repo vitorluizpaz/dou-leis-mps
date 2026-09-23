@@ -1,9 +1,11 @@
 {
   "name": "radar-dou-leis-mps-worker",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev:worker": "wrangler dev",
-    "deploy:worker": "wrangler deploy"
+    "deploy:worker": "wrangler deploy",
+    "test:worker": "node --test tests/test_worker.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.45.0"

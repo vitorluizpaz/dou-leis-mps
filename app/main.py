@@ -5,7 +5,7 @@ from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from fastapi import Depends, FastAPI, Header, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -119,11 +119,29 @@ def laws(date: Date | None = Query(default=None), limit: int = Query(default=100
 @app.post("/api/scrape")
 def scrape(body: ScrapeRequest | None = None, _auth: None = Depends(require_api_key("scrape"))) -> dict:
     target = body.date if body and body.date else datetime.now(ZoneInfo(settings.timezone)).date()
+    return execute_scrape(target)
+
+
+def execute_scrape(target: Date, html: str | None = None) -> dict:
     scraper = DouScraper()
-    items = scraper.scrape(target)
+    items = scraper.scrape(target, html=html)
     sent = publish_pending_telegram()
     return {"date": target, "found": len(items), "new": len(scraper.new_items),
             "telegram_sent": sent, "items": items}
+
+
+@app.post("/api/scrape-html")
+def scrape_html(
+    date: Date = Query(),
+    html: str = Body(media_type="text/html"),
+    _auth: None = Depends(require_api_key("scrape")),
+) -> dict:
+    """Trusted fallback when Render cannot reach the official DOU site."""
+    if len(html.encode("utf-8")) > 2_000_000:
+        raise HTTPException(status_code=413, detail="Página do DOU muito grande")
+    if date.strftime("%d-%m-%Y") not in html or "jsonArray" not in html:
+        raise HTTPException(status_code=422, detail="Página do DOU inválida para a data solicitada")
+    return execute_scrape(date, html=html)
 
 
 @app.get("/api/runs")

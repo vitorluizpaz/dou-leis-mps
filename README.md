@@ -16,22 +16,20 @@ A mensagem enviada ao Telegram contém o título da publicação e um link **Cli
 ## Arquitetura
 
 ```text
-GitHub Actions (diariamente às 10:00)
-             |
-             v
-      POST /api/scrape
-             |
-             v
-   FastAPI + APScheduler
-       |          |
-       v          v
-   PostgreSQL   Telegram Bot API
-       |
-       v
-    GET /api/laws
+Cloudflare Cron (09:50 e 09:57) → acorda Render
+                                         |
+                                         v
+                             FastAPI + APScheduler (10:00)
+                                         ^
+                                         |
+GitHub Actions (10:17 e 10:47) → coleta de reserva
+                             (inclui fallback de rede)
+
+FastAPI → PostgreSQL (publicações e envios) → Telegram Bot API
+       └→ GET /api/laws (consulta autenticada)
 ```
 
-O serviço também possui um agendador interno diário. O workflow do GitHub Actions é a camada mais importante em produção gratuita, pois acorda o serviço do Render quando ele entra em estado de espera.
+O Worker acorda o Render antes do agendamento interno; o GitHub Actions faz as tentativas de reserva caso o horário principal não funcione.
 
 ## Interface web
 
@@ -186,9 +184,11 @@ As respostas da API usam `Cache-Control: no-store` para evitar que dados protegi
 
 ## Agendamento em produção
 
-O workflow `.github/workflows/daily-scrape.yml` é executado uma vez por dia às 10:00 no horário de Brasília. Como o GitHub Actions usa UTC, o cron é `0 13 * * *`. Ele faz uma requisição autenticada para `/api/scrape`.
+O Worker da Cloudflare recebe Cron Triggers às 09:50 e 09:57 (horário de Brasília; `50,57 12 * * *` em UTC). Ele consulta `/api/health` no Render para acordar a instância gratuita antes das 10:00. Não precisa de chave de API: a coleta continua protegida pelo servidor.
 
-O serviço também agenda uma execução diária às 10:00 usando `CronTrigger` no fuso `America/Sao_Paulo`. Os dois mecanismos possuem a mesma finalidade; o workflow do GitHub funciona como despertador externo para o plano gratuito do Render.
+O serviço agenda a coleta e o envio ao Telegram diariamente às 10:00 usando `CronTrigger` no fuso `America/Sao_Paulo`. O workflow `.github/workflows/daily-scrape.yml` faz duas tentativas autenticadas de reserva às 10:17 e 10:47 (`17,47 13 * * *` em UTC). Publicações e entregas já registradas não são enviadas novamente. O agendamento do GitHub pode atrasar ou não disparar, por isso não é mais o único mecanismo diário.
+
+Se o Render não conseguir consultar `in.gov.br` (por exemplo, por timeout), o workflow busca a edição oficial diretamente no runner do GitHub e a envia ao endpoint autenticado `/api/scrape-html?date=AAAA-MM-DD`. Esse endpoint aceita apenas HTML com a data solicitada e `jsonArray`, limitado a 2 MB, e usa a mesma `SCRAPE_API_KEY`. Não armazene a chave no Worker ou na landing page.
 
 No GitHub, configure estes secrets no repositório:
 
@@ -198,6 +198,8 @@ No GitHub, configure estes secrets no repositório:
 | `SCRAPE_API_KEY` | A mesma chave configurada no Render |
 
 Também é possível iniciar o workflow manualmente pela aba **Actions** usando **Run workflow**.
+
+Para diagnosticar falhas, veja o resultado de **Actions → Scrape DOU daily** e os logs do Render. Um workflow concluído com `found: 0` não comprova que a edição não tinha leis; confira a fonte oficial se suspeitar de falha na extração.
 
 ## Deploy no Render
 
@@ -209,11 +211,11 @@ O arquivo `render.yaml` descreve o serviço web e o banco PostgreSQL. O fluxo us
 4. `DATABASE_URL`, chaves da API e variáveis do Telegram cadastradas em **Environment**.
 5. Deploy automático após cada push na branch `main`.
 
-O plano gratuito pode colocar o web service em espera após inatividade. Por isso o workflow diário do GitHub Actions deve permanecer ativo. O banco PostgreSQL gratuito também pode ter prazo ou limites definidos pelo provedor; monitore o painel do Render.
+O plano gratuito pode colocar o web service em espera após inatividade. Por isso os Cron Triggers da Cloudflare devem permanecer ativos, com o GitHub Actions como reserva. O banco PostgreSQL gratuito também pode ter prazo ou limites definidos pelo provedor; monitore o painel do Render.
 
 ## Landing page no Cloudflare Workers
 
-A landing page é publicada como asset estático no Cloudflare Workers. O Worker encaminha as rotas `/api/*` ao FastAPI no Render, onde continuam a execução do scraper, o PostgreSQL e o agendamento diário. O endereço do grupo do Telegram está configurado nos botões da página.
+A landing page é publicada como asset estático no Cloudflare Workers. O Worker encaminha as rotas `/api/*` ao FastAPI no Render e acorda o serviço pelos Cron Triggers. No Render continuam a execução do scraper, o PostgreSQL e o agendamento diário. O endereço do grupo do Telegram está configurado nos botões da página.
 
 Arquivos da integração: `wrangler.jsonc`, `cloudflare/worker.js`, `package.json` e `package-lock.json`. A página e seu JavaScript ficam em `app/static/`. Para desenvolver localmente e publicar:
 

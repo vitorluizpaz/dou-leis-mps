@@ -49,4 +49,17 @@ export default {
       headers,
     });
   },
+
+  async scheduled(controller, env) {
+    // Wake Render before the in-process 10:00 BRT job; GitHub is the backup.
+    const healthUrl = new URL("/api/health", env.BACKEND_URL);
+    const response = await fetch(healthUrl, {
+      method: "GET",
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!response.ok) {
+      throw new Error(`Render warm-up failed: HTTP ${response.status}`);
+    }
+    console.log(`Render warm-up succeeded: ${controller.cron}`);
+  },
 };

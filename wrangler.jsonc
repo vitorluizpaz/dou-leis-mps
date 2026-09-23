@@ -11,6 +11,9 @@
   "vars": {
     "BACKEND_URL": "https://dou-leis-mps.onrender.com"
   },
+  "triggers": {
+    "crons": ["50,57 12 * * *"]
+  },
   "observability": {
     "enabled": true
   }

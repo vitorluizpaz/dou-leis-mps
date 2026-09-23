@@ -2,23 +2,28 @@ name: Scrape DOU daily
 
 on:
   schedule:
-    # 10:00 America/Sao_Paulo = 13:00 UTC.
-    - cron: "0 13 * * *"
+    # Backups after 10:00 BRT; avoid GitHub's busy :00 slot.
+    - cron: "17,47 13 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: dou-daily-scrape
+  cancel-in-progress: false
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out backup fetcher
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install HTTP client
+        run: python3 -m pip install requests==2.34.2
       - name: Trigger scraper
         env:
           API_URL: ${{ secrets.API_URL }}
           SCRAPE_API_KEY: ${{ secrets.SCRAPE_API_KEY }}
-        run: |
-          curl --fail-with-body --show-error --silent \
-            --connect-timeout 30 --max-time 300 \
-            --retry 4 --retry-delay 15 --retry-all-errors \
-            -X POST "$API_URL/api/scrape" \
-            -H "X-API-Key: $SCRAPE_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+        run: python3 scripts/run_daily.py
