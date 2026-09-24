@@ -52,6 +52,7 @@
     .monitor-item { min-height:92px; padding:15px; border:1px solid var(--line); border-radius:15px; background:rgba(255,255,255,.035); }
     .monitor-item span { display:block; color:#7f94ac; font-size:.68rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
     .monitor-item strong { display:block; margin-top:9px; color:#e9f5ff; font-size:.92rem; line-height:1.35; }
+    .last-check { margin:15px 0 0; padding:13px 15px; border:1px solid var(--line); border-radius:12px; color:#aabbd0; font-size:.8rem; line-height:1.5; }
     .trust-strip { display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
     .trust-item { display:flex; align-items:center; justify-content:center; gap:12px; min-height:96px; color:#b7c8da; font-size:.88rem; font-weight:650; text-align:center; }
     .trust-item + .trust-item { border-left:1px solid var(--line); }
@@ -132,6 +133,7 @@
           <div class="monitor-item"><span>Fonte</span><strong>DOU · Seção 1</strong></div>
           <div class="monitor-item"><span>Telegram</span><strong id="telegram">Verificando…</strong></div>
         </div>
+        <p id="last-check" class="last-check" aria-live="polite">Última verificação: carregando…</p>
       </aside>
     </section>
     <section class="trust-strip shell" aria-label="Características do serviço">

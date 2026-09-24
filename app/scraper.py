@@ -96,7 +96,7 @@ class DouScraper:
         try:
             items = self.parse(html if html is not None else self.fetch_html(target_date), target_date)
             self.new_items = save_publications(items)
-            save_run(target_date.isoformat(), "success", len(self.new_items))
+            save_run(target_date.isoformat(), "success", len(items))
             return items
         except Exception as exc:
             save_run(target_date.isoformat(), "error", 0, str(exc))

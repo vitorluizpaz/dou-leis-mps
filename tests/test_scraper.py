@@ -26,3 +26,14 @@ def test_parse_deduplicates_items():
 def test_parse_discards_non_official_links():
     html = '''<html><a href="https://evil.example/lei">LEI Nº 15.001, DE 20 DE SETEMBRO DE 2026</a></html>'''
     assert DouScraper().parse(html, date(2026, 9, 20)) == []
+
+
+def test_scrape_records_total_found_not_only_new(monkeypatch):
+    import app.scraper as scraper_module
+
+    recorded = []
+    monkeypatch.setattr(scraper_module, "save_publications", lambda items: [])
+    monkeypatch.setattr(scraper_module, "save_run", lambda *args: recorded.append(args))
+    scraper = DouScraper()
+    assert len(scraper.scrape(date(2026, 9, 20), html=FIXTURE)) == 2
+    assert recorded == [("2026-09-20", "success", 2)]

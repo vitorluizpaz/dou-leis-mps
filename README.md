@@ -147,11 +147,13 @@ Endpoint público de saúde e configuração não sensível:
   "schedule_label": "diariamente às 10:00 (America/Sao_Paulo)",
   "timezone": "America/Sao_Paulo",
   "auth_configured": true,
-  "telegram_configured": true
+  "telegram_configured": true,
+  "recent_checks": [{"date": "2026-09-24", "at": "2026-09-24T13:00:05", "status": "success", "found": 0}]
 }
 ```
 
 `telegram_configured: true` confirma apenas que token e chat ID foram cadastrados; não garante permissão de envio no grupo. O endpoint devolve HTTP 503 se o banco não estiver acessível, para que as rotinas de aquecimento e monitoramento detectem a indisponibilidade.
+`recent_checks` mostra até cinco checagens recentes (data, instante, situação e total encontrado), sem expor chaves nem mensagens de erro. Uma checagem com `found: 0` pode simplesmente significar que não houve Lei ou MP na edição consultada; `delivery_error` indica falha no envio ao Telegram. O painel inicial mostra o resultado da última checagem.
 
 ### `GET /api/laws`
 
@@ -206,6 +208,7 @@ No GitHub, configure estes secrets no repositório:
 Também é possível iniciar o workflow manualmente pela aba **Actions** usando **Run workflow**. Cada execução verifica a permissão do bot após a coleta; se ele estiver restrito ou removido, o job falha em vez de registrar um falso sucesso. O GitHub Actions usa permissões mínimas de leitura do repositório e não mantém credenciais do checkout.
 
 Para diagnosticar falhas, veja o resultado de **Actions → Scrape DOU daily** e os logs do Render. Um workflow concluído com `found: 0` não comprova que a edição não tinha leis; confira a fonte oficial se suspeitar de falha na extração.
+O serviço registra no log o início e o resultado do disparo das 10:00, e o endpoint público de saúde informa as últimas checagens sem revelar detalhes sensíveis. O GitHub Actions é uma reserva e seus disparos agendados podem atrasar ou não ocorrer; não use a ausência de mensagem no Telegram, isoladamente, como indicação de pane.
 
 ## Deploy no Render
 

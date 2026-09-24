@@ -1,5 +1,6 @@
 from datetime import date as Date, datetime
 from contextlib import asynccontextmanager
+import logging
 import secrets
 from pathlib import Path
 
@@ -12,12 +13,13 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from zoneinfo import ZoneInfo
 
 from .config import get_settings
-from .db import database_ready, init_db, list_publications, list_runs
+from .db import database_ready, init_db, list_publications, list_runs, save_run
 from .scraper import DouScraper
 from .telegram import TelegramPublisher, publish_pending_telegram
 
 settings = get_settings()
 scheduler = BackgroundScheduler(timezone=ZoneInfo(settings.timezone))
+logger = logging.getLogger("uvicorn.error")
 
 
 class ScrapeRequest(BaseModel):
@@ -26,8 +28,16 @@ class ScrapeRequest(BaseModel):
 
 def run_scheduled_scrape() -> None:
     now = datetime.now(ZoneInfo(settings.timezone))
-    DouScraper().scrape(now.date())
-    publish_pending_telegram()
+    logger.info("Iniciando checagem agendada do DOU para %s", now.date())
+    try:
+        result = execute_scrape(now.date())
+    except Exception:
+        logger.exception("Checagem agendada do DOU falhou")
+        raise
+    logger.info(
+        "Checagem agendada concluída: encontrados=%s novos=%s enviados=%s",
+        result["found"], result["new"], result["telegram_sent"],
+    )
 
 
 def schedule_label() -> str:
@@ -90,6 +100,7 @@ def health() -> dict:
     try:
         if not database_ready():
             raise RuntimeError("Database readiness check failed")
+        recent_runs = list_runs(5)
     except Exception:
         raise HTTPException(status_code=503, detail="Banco de dados indisponível") from None
     return {"status": "ok", "scrape_interval_minutes": settings.scrape_interval_minutes,
@@ -97,7 +108,12 @@ def health() -> dict:
             "schedule_label": schedule_label(),
             "timezone": settings.timezone,
             "auth_configured": bool(settings.read_api_key and settings.scrape_api_key),
-            "telegram_configured": bool(settings.telegram_bot_token and settings.telegram_chat_id)}
+            "telegram_configured": bool(settings.telegram_bot_token and settings.telegram_chat_id),
+            "recent_checks": [
+                {"date": run["requested_date"], "at": run["started_at"].isoformat(),
+                 "status": run["status"], "found": run["found"]}
+                for run in recent_runs
+            ]}
 
 
 @app.get("/api/telegram-link")
@@ -135,7 +151,11 @@ def scrape(body: ScrapeRequest | None = None, _auth: None = Depends(require_api_
 def execute_scrape(target: Date, html: str | None = None) -> dict:
     scraper = DouScraper()
     items = scraper.scrape(target, html=html)
-    sent = publish_pending_telegram()
+    try:
+        sent = publish_pending_telegram()
+    except Exception:
+        save_run(target.isoformat(), "delivery_error", len(items))
+        raise
     return {"date": target, "found": len(items), "new": len(scraper.new_items),
             "telegram_sent": sent, "items": items}
 

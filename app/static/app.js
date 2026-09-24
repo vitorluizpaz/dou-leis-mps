@@ -76,12 +76,26 @@ async function loadHealth() {
     $("#schedule").textContent = scheduleLabel.replace(/\s*\(America\/Sao_Paulo\)\s*/gi, "").trim();
     $("#timezone").textContent = health.timezone || "—";
     $("#telegram").textContent = health.telegram_configured ? "Conectado" : "Não configurado";
+    const latest = health.recent_checks?.[0];
+    if (latest) {
+      const checkedAt = new Date(`${latest.at}Z`);
+      const when = Number.isNaN(checkedAt.getTime())
+        ? latest.date
+        : checkedAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const outcome = latest.status === "success"
+        ? (latest.found === 0 ? "nenhuma Lei ou MP encontrada" : "checagem concluída")
+        : "falha na checagem ou no envio";
+      $("#last-check").textContent = `Última verificação: ${when} · ${outcome}.`;
+    } else {
+      $("#last-check").textContent = "Ainda não há verificações registradas.";
+    }
     $("#health-label").textContent = response.ok ? "Serviço online" : "Indisponível";
     $("#health-dot").style.background = response.ok ? "var(--green)" : "#ff9089";
   } catch (_) {
     scheduleNextCheck();
     $("#health-label").textContent = "Indisponível";
     $("#telegram").textContent = "Indisponível";
+    $("#last-check").textContent = "Não foi possível consultar a última verificação.";
     $("#health-dot").style.background = "#ff9089";
   }
 }
